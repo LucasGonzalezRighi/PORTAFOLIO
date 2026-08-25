@@ -2,7 +2,7 @@ export const about = {
   heading: {
     kicker: '01 Sobre mí',
     title: 'Código que compile y que además',
-    accent: 'Inspire',
+    accent: 'inspire',
     tail: '.',
     accentColor: 'var(--blue-400)',
   },

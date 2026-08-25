@@ -37,6 +37,8 @@ const reducedMotion = () =>
 
 export class EffectsEngine {
   private cleanups: Cleanup[] = [];
+  /** Restauraciones de DOM (typewriters/títulos) para un destroy limpio */
+  private restores: Cleanup[] = [];
   private mouse: { x: number; y: number } | null = null;
   private pRaf = 0;
   private timers: ReturnType<typeof setTimeout>[] = [];
@@ -143,6 +145,22 @@ export class EffectsEngine {
     this.intervals.forEach(clearInterval);
     this.cleanups.forEach((fn) => fn());
     this.cleanups = [];
+    // Restaurar DOM modificado (textos de typewriter, títulos partidos)
+    this.restores.forEach((fn) => fn());
+    this.restores = [];
+    // Limpiar flags de inicialización para que un próximo montaje
+    // (StrictMode, HMR, remount) pueda volver a enlazar todo.
+    const flags = [
+      'rvInit', 'rvDone', 'cInit', 'cRan', 'twInit', 'twDone', 'twGroupDone',
+      'aInit', 'tInit', 'fanBound', 'mInit', 'rInit', 'swBound', 'fInit', 'hvInit',
+    ];
+    document
+      .querySelectorAll<HTMLElement>(
+        '[data-rv-init],[data-rv-done],[data-c-init],[data-c-ran],[data-tw-init],[data-tw-done],[data-tw-group-done],[data-a-init],[data-t-init],[data-fan-bound],[data-m-init],[data-r-init],[data-sw-bound],[data-f-init],[data-hv-init]',
+      )
+      .forEach((el) => {
+        flags.forEach((f) => delete el.dataset[f]);
+      });
   }
 
   private showAll() {
@@ -181,6 +199,12 @@ export class EffectsEngine {
   // ── reveal ─────────────────────────────────────────────────
   private reveal() {
     const els = [...document.querySelectorAll<HTMLElement>('[data-reveal]')].filter((el) => {
+      if (el.dataset.rvDone) {
+        // ya se reveló en un montaje anterior: mostrar sin re-animar
+        el.style.opacity = '1';
+        el.style.transform = 'none';
+        return false;
+      }
       if (el.dataset.rvInit) return false;
       el.dataset.rvInit = '1';
       return true;
@@ -518,6 +542,10 @@ export class EffectsEngine {
     if (!targets.length) return;
     const map = new Map<HTMLElement, HTMLElement[]>();
     targets.forEach((el) => {
+      const original = el.innerHTML;
+      this.restores.push(() => {
+        el.innerHTML = original;
+      });
       const out: HTMLElement[] = [];
       [...el.childNodes].forEach((c) => this.splitNode(c, out, el.dataset.anim));
       map.set(el, out);
@@ -558,6 +586,13 @@ export class EffectsEngine {
     if (!els.length) return;
     const specs = new Map<HTMLElement, Seg[]>();
     els.forEach((el) => {
+      const original = el.innerHTML;
+      const originalStyle = el.getAttribute('style');
+      this.restores.push(() => {
+        el.innerHTML = original;
+        if (originalStyle === null) el.removeAttribute('style');
+        else el.setAttribute('style', originalStyle);
+      });
       const segs: Seg[] = [...el.childNodes].map((n) =>
         n.nodeType === 3
           ? { text: n.textContent || '', el: null }
@@ -851,7 +886,8 @@ export class EffectsEngine {
       rx += (tx - rx) * 0.22;
       ry += (ty - ry) * 0.22;
       if (spot) spot.style.transform = `translate3d(${sx}px,${sy}px,0)`;
-      if (ring) ring.style.transform = `translate3d(${rx}px,${ry}px,0)`;
+      // rotate(45deg) convierte el cuadrado del anillo en rombo
+      if (ring) ring.style.transform = `translate3d(${rx}px,${ry}px,0) rotate(45deg)`;
       this.pRaf = requestAnimationFrame(loop);
     };
     loop();

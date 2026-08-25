@@ -64,7 +64,7 @@ export function Hero() {
             </span>
             <span style={{ display: 'block', paddingBottom: '.14em' }}>
               <span style={{ display: 'block', whiteSpace: 'nowrap', fontSize: 'min(.62em,8.4vw)', animation: 'fadein 1s .28s var(--ease-out) both' }}>
-                Gonzalez <span style={{ color: 'var(--lime-400)' }}>{site.lastNameAccent}</span>
+                González <span style={{ color: 'var(--lime-400)' }}>{site.lastNameAccent}</span>
               </span>
             </span>
           </h1>

@@ -34,7 +34,8 @@ export function CursorFx() {
           width: '26px',
           height: '26px',
           margin: '-13px 0 0 -13px',
-          borderRadius: '50%',
+          /* rombo: cuadrado con esquinas apenas redondeadas, rotado 45° por el motor */
+          borderRadius: '5px',
           border: '1px solid rgba(107,245,168,.4)',
           pointerEvents: 'none',
           zIndex: 'var(--z-cursor)' as never,
