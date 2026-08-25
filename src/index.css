@@ -1,0 +1,146 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Tipografías autoalojadas (Space Grotesk + JetBrains Mono)
+   ============================================================ */
+@layer base {
+  /* JetBrains Mono */
+  @font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 400 500;
+    font-display: swap;
+    src: url('/fonts/jbm-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 400 500;
+    font-display: swap;
+    src: url('/fonts/jbm-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+  /* Space Grotesk */
+  @font-face {
+    font-family: 'Space Grotesk';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('/fonts/sg-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Space Grotesk';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('/fonts/sg-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+
+  /* ============================================================
+     Base global (todos los valores provienen de design tokens)
+     ============================================================ */
+  h1, h2, h3, h4 {
+    hyphens: none;
+    word-break: normal;
+    overflow-wrap: normal;
+    text-wrap: balance;
+  }
+  html {
+    scroll-behavior: smooth;
+    background: var(--bg-0);
+  }
+  body {
+    margin: 0;
+    background: var(--bg-0);
+    color: var(--text-strong);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  a { color: var(--blue-400); text-decoration: none; }
+  a:hover { color: var(--lime-400); }
+  ::selection { background: rgba(33, 224, 127, 0.24); color: #fff; }
+  :focus-visible { outline: 2px solid var(--blue-400); outline-offset: 3px; }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: var(--bg-0); }
+  ::-webkit-scrollbar-thumb { background: rgba(78, 159, 212, 0.4); border-radius: 10px; }
+}
+
+/* ============================================================
+   Keyframes del sistema de animación
+   ============================================================ */
+@keyframes rise { from { opacity: 0; transform: translateY(120%) rotate(4deg); } to { opacity: 1; transform: translateY(0) rotate(0); } }
+@keyframes fadein { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes float1 { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(3%, -4%, 0) scale(1.06); } }
+@keyframes float2 { 0%, 100% { transform: translate3d(0, 0, 0) scale(1.04); } 50% { transform: translate3d(-4%, 3%, 0) scale(0.96); } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes sheen { 0% { transform: translateX(-120%) skewX(-18deg); } 60%, 100% { transform: translateX(320%) skewX(-18deg); } }
+@keyframes pulse { 0%, 100% { opacity: 0.35; transform: scale(1); } 50% { opacity: 1; transform: scale(1.6); } }
+@keyframes scrollcue { 0% { transform: translateY(-60%); opacity: 0; } 40% { opacity: 1; } 100% { transform: translateY(140%); opacity: 0; } }
+@keyframes gridpan { from { transform: translateY(0); } to { transform: translateY(64px); } }
+@keyframes blink { 0%, 45% { opacity: 1; } 55%, 100% { opacity: 0; } }
+@keyframes drift { from { transform: translateY(0); } to { transform: translateY(-42%); } }
+@keyframes aurora { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.5; } 50% { transform: translate3d(4%, -3%, 0) scale(1.12); opacity: 0.8; } }
+
+/* ============================================================
+   Patrones compartidos del Design System
+   ============================================================ */
+@layer components {
+  /* Etiqueta de sección: "01 SOBRE MÍ" */
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: var(--text-kicker);
+    letter-spacing: var(--tracking-kicker);
+    text-transform: uppercase;
+    color: var(--green-400);
+  }
+  /* Chip mono pequeño (hero badges, tags) */
+  .chip {
+    font-family: var(--font-mono);
+    font-size: var(--text-kicker);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    border: var(--border-blue);
+    background: rgba(16, 42, 67, 0.4);
+  }
+  /* Link del navbar */
+  .nav-link {
+    font-size: 14px;
+    color: var(--text-secondary);
+    padding: 6px 2px;
+    border-bottom: 1px solid transparent;
+    transition: color 0.25s, border-color 0.25s;
+  }
+  .nav-link:hover { color: var(--blue-400); border-color: var(--blue-400); }
+}
+
+/* Layout responsive del explorador de código (tokens de layout) */
+:root {
+  --showcase-cols: minmax(0, 1fr);
+  --showcase-rail-max: 260px;
+}
+@media (min-width: 900px) {
+  :root {
+    --showcase-cols: minmax(240px, 300px) minmax(0, 1fr);
+    --showcase-rail-max: 620px;
+  }
+}
+
+/* Respeto por prefers-reduced-motion: las animaciones decorativas se apagan */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
