@@ -1,5 +1,6 @@
 import { certifications, education } from '@/content/education';
 import { SectionHeading } from '@/components/ui/SectionHeading';
+import { useLang } from '@/i18n/LanguageContext';
 import { revealStyle } from '@/lib/styles';
 
 const eduTone = {
@@ -55,11 +56,13 @@ function SheenBand({ delay, width = '60px' }: { delay: string; width?: string })
  * Formación y certificaciones, con haz de luz que recorre la sección.
  */
 export function Education() {
+  const { dict } = useLang();
+  const t = dict.education;
   return (
     <section id="certificaciones" style={{ position: 'relative', padding: 'var(--section-y) var(--gutter)', background: 'rgba(7,13,26,.9)' }}>
       <div style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto' }}>
         <div style={{ marginBottom: 'clamp(40px,5vw,64px)' }}>
-          <SectionHeading kicker="06 Formación y certificaciones" title="Aprender es parte del" accent="proceso" accentColor="var(--green-400)" />
+          <SectionHeading kicker={t.kicker} title={t.title} accent={t.accent} accentColor="var(--green-400)" />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 'var(--gap-card)' }}>
@@ -77,16 +80,16 @@ export function Education() {
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-kicker)', letterSpacing: '.16em', textTransform: 'uppercase', color: tone.kicker }}>
                   {card.institution}
                 </div>
-                <h3 style={{ margin: '12px 0 0', fontSize: '21px', fontWeight: 600 }}>{card.title}</h3>
+                <h3 style={{ margin: '12px 0 0', fontSize: '21px', fontWeight: 600 }}>{t.cards[card.institution]?.title ?? card.title}</h3>
                 {card.grade ? (
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginTop: '14px' }}>
                     <span data-count={card.grade.value} data-decimals={card.grade.decimals} style={{ fontSize: '34px', fontWeight: 600, letterSpacing: '-.03em', color: 'var(--lime-400)' }}>
                       0,00
                     </span>
-                    <span style={{ fontSize: 'var(--text-label)', color: 'var(--text-dim)' }}>{card.grade.label}</span>
+                    <span style={{ fontSize: 'var(--text-label)', color: 'var(--text-dim)' }}>{t.gradeLabel}</span>
                   </div>
                 ) : (
-                  <p style={{ margin: '12px 0 0', fontSize: 'var(--text-body-xs)', lineHeight: 1.6, color: 'var(--text-tertiary)' }}>{card.description}</p>
+                  <p style={{ margin: '12px 0 0', fontSize: 'var(--text-body-xs)', lineHeight: 1.6, color: 'var(--text-tertiary)' }}>{t.cards[card.institution]?.description ?? card.description}</p>
                 )}
               </div>
             );
@@ -94,7 +97,7 @@ export function Education() {
         </div>
 
         <div data-reveal="1" data-delay="80" style={{ ...revealStyle, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: '12px', marginTop: '18px' }}>
-          {certifications.map((cert) => {
+          {certifications.map((cert, i) => {
             const tone = certTone[cert.tone];
             return (
               <div
@@ -109,7 +112,7 @@ export function Education() {
                     <path d="M20 6L9 17l-5-5" />
                   </svg>
                 </span>
-                <span style={{ fontSize: 'var(--text-body-xs)', color: 'var(--text-body)' }}>{cert.label}</span>
+                <span style={{ fontSize: 'var(--text-body-xs)', color: 'var(--text-body)' }}>{t.certs[i] ?? cert.label}</span>
               </div>
             );
           })}

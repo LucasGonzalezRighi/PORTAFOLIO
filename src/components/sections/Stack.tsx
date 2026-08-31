@@ -1,10 +1,12 @@
 import { marquee, stackCategories, type StackCategory, type StackItem } from '@/content/stack';
 import { SectionHeading } from '@/components/ui/SectionHeading';
+import { useLang } from '@/i18n/LanguageContext';
+import { asset } from '@/lib/asset';
 import { revealStyle, tones } from '@/lib/styles';
 
 function ItemBadge({ item, size, tone }: { item: StackItem; size: number; tone: (typeof tones)[keyof typeof tones] }) {
   if (item.icon) {
-    return <img data-icon="1" src={`/images/stack/${item.icon}.svg`} width={size} height={size} alt="" style={{ display: 'block' }} />;
+    return <img data-icon="1" src={asset(`/images/stack/${item.icon}.svg`)} width={size} height={size} alt="" style={{ display: 'block' }} />;
   }
   const badge = item.badge!;
   return (
@@ -27,18 +29,16 @@ function ItemBadge({ item, size, tone }: { item: StackItem; size: number; tone: 
   );
 }
 
-function FlipCard({ category }: { category: StackCategory }) {
+function FlipCard({ category, title }: { category: StackCategory; title: string }) {
   const tone = tones[category.tone];
   return (
     <div
       data-reveal="1"
       data-delay={category.revealDelay || undefined}
+      className="flip-card"
       style={{ ...revealStyle, perspective: '1500px', minHeight: '230px' }}
     >
-      <div
-        data-hover="transform:rotateY(180deg)"
-        style={{ position: 'relative', height: '100%', minHeight: '230px', transformStyle: 'preserve-3d', transition: 'transform .85s var(--ease-out)' }}
-      >
+      <div className="flip-inner" data-tapflip="1">
         {/* Frente */}
         <div
           style={{
@@ -66,7 +66,7 @@ function FlipCard({ category }: { category: StackCategory }) {
             ))}
           </div>
           <div style={{ fontSize: 'clamp(21px,2.1vw,27px)', fontWeight: 600, lineHeight: 1.15, letterSpacing: '-.01em', color: tone.color }}>
-            {category.title}
+            {title}
           </div>
         </div>
         {/* Dorso: chips de tecnologías */}
@@ -118,6 +118,7 @@ function FlipCard({ category }: { category: StackCategory }) {
  * La sección entra con zoom ligado al scroll (data-zoom-section).
  */
 export function Stack() {
+  const { dict } = useLang();
   const marqueeRow = (keyPrefix: string) => (
     <div style={{ display: 'flex', gap: '56px', alignItems: 'center' }}>
       {marquee.map((tech) => (
@@ -157,10 +158,10 @@ export function Stack() {
         }}
       />
       <div style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto', padding: '0 var(--gutter)' }}>
-        <SectionHeading kicker="02 Stack tecnológico" title="Las herramientas con las que" accent="construyo" accentColor="var(--green-400)" />
+        <SectionHeading kicker={dict.stack.kicker} title={dict.stack.title} accent={dict.stack.accent} accentColor="var(--green-400)" />
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 'var(--gap-card)', marginTop: 'clamp(40px,5vw,64px)' }}>
-          {stackCategories.map((category) => (
-            <FlipCard key={category.title} category={category} />
+          {stackCategories.map((category, i) => (
+            <FlipCard key={category.title} category={category} title={dict.stack.categories[i]} />
           ))}
         </div>
       </div>

@@ -1,4 +1,6 @@
 import { site } from '@/content/site';
+import { useLang } from '@/i18n/LanguageContext';
+import { asset } from '@/lib/asset';
 import { monoLabel } from '@/lib/styles';
 
 const statNumber = {
@@ -12,12 +14,13 @@ const statNumber = {
  * y fotografía con tarjeta flotante de edad.
  */
 export function Hero() {
+  const { dict } = useLang();
   return (
     <section
       id="top"
+      className="hero-section"
       style={{
         position: 'relative',
-        minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
         padding: 'clamp(110px,13vh,160px) var(--gutter) clamp(56px,7vh,80px)',
@@ -70,11 +73,11 @@ export function Hero() {
           </h1>
 
           <p style={{ maxWidth: 'var(--measure-body)', margin: '26px 0 0', fontSize: 'var(--text-lead)', lineHeight: 'var(--leading-body)', color: 'var(--text-secondary)', textWrap: 'pretty', animation: 'fadein 1s .6s both' }}>
-            {site.tagline}
+            {dict.hero.tagline}
           </p>
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '22px', animation: 'fadein 1s .72s both' }}>
-            {site.heroBadges.map((badge) => (
+            {dict.hero.badges.map((badge) => (
               <span key={badge} className="chip">
                 {badge}
               </span>
@@ -86,7 +89,7 @@ export function Hero() {
             <a
               data-magnetic="1"
               data-sweep="1"
-              href={site.cv.href}
+              href={asset(site.cv.href)}
               download={site.cv.download}
               data-hover="box-shadow:0 22px 60px -16px rgba(33,224,127,.45)"
               style={{
@@ -110,7 +113,7 @@ export function Hero() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 4v11M6.5 10.5L12 16l5.5-5.5M4.5 20h15" />
                 </svg>
-                Mi CV
+                {dict.hero.cv}
               </span>
             </a>
             {/* CTA secundario */}
@@ -137,7 +140,7 @@ export function Hero() {
             >
               <span aria-hidden style={{ position: 'absolute', inset: '-1px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--green-400)', background: 'rgba(150,160,172,.22)', pointerEvents: 'none', clipPath: 'inset(0 100% 0 0)', transition: 'clip-path 1.5s cubic-bezier(.4,.05,.25,1)' }} />
               <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
-                Ver proyectos
+                {dict.hero.viewProjects}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M5 12h13M13 6l6 6-6 6" />
                 </svg>
@@ -146,9 +149,9 @@ export function Hero() {
           </div>
 
           {/* Stats animadas */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(120px,1fr))', gap: 'clamp(16px,2vw,32px)', marginTop: 'clamp(40px,5vw,64px)', maxWidth: '520px', animation: 'fadein 1s 1s both' }}>
-            {site.heroStats.map((stat) => (
-              <div key={stat.label}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(96px,1fr))', gap: 'clamp(16px,2vw,32px)', marginTop: 'clamp(40px,5vw,64px)', maxWidth: '520px', animation: 'fadein 1s 1s both' }}>
+            {site.heroStats.map((stat, i) => (
+              <div key={dict.hero.statLabels[i]}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
                   {'prefix' in stat && stat.prefix && (
                     <span style={{ ...statNumber, color: 'var(--green-400)' }}>{stat.prefix}</span>
@@ -161,7 +164,7 @@ export function Hero() {
                     {'decimals' in stat && stat.decimals ? '0,00' : '0'}
                   </span>
                 </div>
-                <div style={{ ...monoLabel, marginTop: '4px' }}>{stat.label}</div>
+                <div style={{ ...monoLabel, marginTop: '4px' }}>{dict.hero.statLabels[i]}</div>
               </div>
             ))}
           </div>
@@ -169,37 +172,35 @@ export function Hero() {
 
         {/* Fotografía */}
         <div data-parallax="1" data-speed="-0.06" style={{ display: 'flex', justifyContent: 'center', animation: 'fadein 1.2s .5s both' }}>
-          <div data-tilt="1" style={{ position: 'relative', width: 'min(100%,420px)', aspectRatio: '4/5', transformStyle: 'preserve-3d', transition: 'transform .5s var(--ease-out)' }}>
+          <div data-tilt="1" className="hero-photo" style={{ position: 'relative', width: 'min(100%,420px)', aspectRatio: '4/5', transformStyle: 'preserve-3d', transition: 'transform .5s var(--ease-out)' }}>
             <div style={{ position: 'absolute', inset: '-14%', borderRadius: '50%', background: 'radial-gradient(circle,rgba(46,127,196,.3),transparent 68%)', filter: 'blur(52px)', opacity: 0.7, animation: 'spin 22s linear infinite' }} />
             <div style={{ position: 'absolute', inset: 0, borderRadius: '26px', overflow: 'hidden', border: '1px solid rgba(78,159,212,.26)', background: 'rgba(13,32,54,.75)', backdropFilter: 'blur(10px)', boxShadow: '0 40px 90px -40px rgba(29,95,168,.45)' }}>
               <img
-                src={site.photo.src}
+                src={asset(site.photo.src)}
                 alt={site.photo.alt}
-                data-hover="filter:grayscale(0) saturate(.9) contrast(1.05)"
+                className="hero-photo-img"
                 style={{
                   width: '100%',
                   height: '100%',
                   objectFit: 'cover',
                   objectPosition: 'center 22%',
-                  filter: 'grayscale(1) contrast(1.05)',
-                  transition: 'filter .55s var(--ease-out)',
                 }}
               />
               <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(190deg,transparent 40%,rgba(6,10,21,.82))', pointerEvents: 'none' }} />
               <div style={{ position: 'absolute', inset: 0, background: 'repeating-linear-gradient(0deg,rgba(78,159,212,.05) 0 1px,transparent 1px 4px)', mixBlendMode: 'screen', pointerEvents: 'none' }} />
             </div>
-            {/* Tarjeta flotante: edad */}
-            <div style={{ position: 'absolute', top: '-22px', left: '-26px', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(33,224,127,.26)', background: 'rgba(8,17,31,.75)', backdropFilter: 'blur(12px)', boxShadow: '0 20px 50px -28px rgba(33,224,127,.45)', animation: 'bob 6s ease-in-out infinite', transform: 'translateZ(60px)' }}>
-              <div style={monoLabel}>{site.age.label}</div>
+            {/* Tarjeta flotante: edad (posición responsive via .hero-age-card) */}
+            <div className="hero-age-card" style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(33,224,127,.26)', background: 'rgba(8,17,31,.75)', backdropFilter: 'blur(12px)', boxShadow: '0 20px 50px -28px rgba(33,224,127,.45)', animation: 'bob 6s ease-in-out infinite', transform: 'translateZ(60px)' }}>
+              <div style={monoLabel}>{dict.hero.ageLabel}</div>
               <div style={{ fontSize: '18px', fontWeight: 600, color: 'var(--green-400)' }}>{site.age.value}</div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Indicador de scroll */}
-      <div style={{ position: 'absolute', left: '50%', bottom: '26px', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', zIndex: 3 }}>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>scroll</span>
+      {/* Indicador de scroll (en mobile queda debajo de la foto) */}
+      <div className="hero-scrollcue" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', zIndex: 3 }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>{dict.hero.scroll}</span>
         <span style={{ position: 'relative', width: '1px', height: '54px', background: 'rgba(78,159,212,.18)', overflow: 'hidden' }}>
           <span style={{ position: 'absolute', inset: 0, background: 'var(--blue-400)', animation: 'scrollcue 2.4s ease-in-out infinite' }} />
         </span>

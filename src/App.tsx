@@ -1,4 +1,5 @@
 import { useEffectsEngine } from '@/hooks/useEffectsEngine';
+import { LanguageProvider } from '@/i18n/LanguageContext';
 import { Background } from '@/components/layout/Background';
 import { CursorFx } from '@/components/layout/CursorFx';
 import { Navbar } from '@/components/layout/Navbar';
@@ -16,7 +17,8 @@ export default function App() {
   useEffectsEngine();
 
   return (
-    <div style={{ position: 'relative', width: '100%', overflow: 'hidden', background: 'var(--bg-0)' }}>
+    <LanguageProvider>
+      <div style={{ position: 'relative', width: '100%', overflow: 'hidden', background: 'var(--bg-0)' }}>
       <Background />
       <CursorFx />
       <Navbar />
@@ -30,7 +32,8 @@ export default function App() {
         <Education />
         <Contact />
       </main>
-      <Footer />
-    </div>
+        <Footer />
+      </div>
+    </LanguageProvider>
   );
 }

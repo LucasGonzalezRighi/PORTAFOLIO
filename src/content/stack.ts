@@ -119,17 +119,17 @@ export const stackCategories: StackCategory[] = [
   },
 ];
 
-/** Cinta de tecnologías (marquee) — color destacado opcional */
+/** Cinta de tecnologías (marquee) — colores de identidad desde tokens `--tech-*` */
 export const marquee: { label: string; color?: string }[] = [
-  { label: 'TypeScript' },
-  { label: 'Next.js', color: 'var(--blue-400)' },
-  { label: 'Nest.js' },
-  { label: 'MongoDB' },
-  { label: 'n8n', color: 'var(--lime-400)' },
-  { label: 'Redis' },
-  { label: 'Docker' },
-  { label: 'Python', color: 'var(--green-400)' },
-  { label: 'Salesforce' },
+  { label: 'TypeScript', color: 'var(--tech-typescript)' },
+  { label: 'Next.js', color: 'var(--tech-nextjs)' },
+  { label: 'Nest.js', color: 'var(--tech-nestjs)' },
+  { label: 'MongoDB', color: 'var(--tech-mongodb)' },
+  { label: 'n8n', color: 'var(--tech-n8n)' },
+  { label: 'Redis', color: 'var(--tech-redis)' },
+  { label: 'Docker', color: 'var(--tech-docker)' },
+  { label: 'Python', color: 'var(--tech-python)' },
+  { label: 'Salesforce', color: 'var(--tech-salesforce)' },
   { label: 'PostgreSQL' },
   { label: 'CI/CD' },
   { label: 'Linux' },

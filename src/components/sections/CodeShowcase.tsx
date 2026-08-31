@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { snippets } from '@/content/snippets';
 import { SectionHeading } from '@/components/ui/SectionHeading';
+import { useLang } from '@/i18n/LanguageContext';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { highlight } from '@/lib/highlight';
 import { revealStyle } from '@/lib/styles';
 
@@ -12,6 +14,10 @@ const reducedMotion = () =>
  * syntax highlighting tokenizado y botón de copiado.
  */
 export function CodeShowcase() {
+  const { dict } = useLang();
+  const t = dict.code;
+  /** En mobile esta sección no se muestra (decisión de diseño mobile) */
+  const isMobile = useMediaQuery('(max-width: 899px)');
   const [active, setActive] = useState(0);
   const [fading, setFading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -20,7 +26,14 @@ export function CodeShowcase() {
   const typeRaf = useRef(0);
   const fadeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** Contenedor scrolleable del código: sigue al cursor mientras escribe */
+  const scrollRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Typing estrictamente monótono (nunca borra): cada carácter tiene un
+   * instante de aparición precalculado — ritmo pausado, con una pequeña
+   * variación por carácter y una pausa breve al terminar cada línea.
+   */
   const startTyping = useCallback((index: number) => {
     cancelAnimationFrame(typeRaf.current);
     const current = snippets[index];
@@ -28,20 +41,40 @@ export function CodeShowcase() {
       setTypedLen(-1);
       return;
     }
-    const total = current.code.length;
-    const dur = 5000;
-    const start = performance.now();
+    const code = current.code;
+    const CHARS_PER_SECOND = 30;
+    const NEWLINE_PAUSE_MS = 180;
+    const base = 1000 / CHARS_PER_SECOND;
+    // Instante (ms) en el que se revela el carácter i
+    const timeline: number[] = new Array(code.length + 1);
+    timeline[0] = 0;
+    let t = 0;
+    for (let i = 0; i < code.length; i++) {
+      // jitter determinístico (±35 %) para que no se sienta mecánico
+      const jitter = 0.65 + 0.7 * (((i * 7919) % 97) / 97);
+      t += base * jitter;
+      if (code[i] === '\n') t += NEWLINE_PAUSE_MS;
+      timeline[i + 1] = t;
+    }
+    const start = performance.now() + 150;
+    let shown = 0;
     setTypedLen(0);
     const tick = (now: number) => {
-      const p = Math.min(1, (now - start) / dur);
-      // pequeña variación de velocidad para que no se sienta robótico
-      const eased = p < 1 ? p * (0.85 + 0.3 * Math.sin(p * 12)) : 1;
-      setTypedLen(Math.max(0, Math.round(Math.min(1, eased) * total)));
-      if (p < 1) typeRaf.current = requestAnimationFrame(tick);
+      const elapsed = now - start;
+      while (shown < code.length && timeline[shown + 1] <= elapsed) shown++;
+      setTypedLen(shown);
+      if (shown < code.length) typeRaf.current = requestAnimationFrame(tick);
       else setTypedLen(-1);
     };
     typeRaf.current = requestAnimationFrame(tick);
   }, []);
+
+  // Mientras escribe, el panel scrollea solo para mantener visible la línea nueva
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typedLen < 0) return;
+    el.scrollTop = el.scrollHeight - el.clientHeight;
+  }, [typedLen]);
 
   useEffect(() => {
     startTyping(0);
@@ -51,6 +84,9 @@ export function CodeShowcase() {
       clearTimeout(copyTimer.current);
     };
   }, [startTyping]);
+
+  // Después de registrar todos los hooks: en mobile no se renderiza
+  if (isMobile) return null;
 
   const select = (index: number) => {
     if (index === active) return;
@@ -97,7 +133,7 @@ export function CodeShowcase() {
       <div data-parallax="1" data-speed="0.06" style={{ position: 'absolute', top: '12%', right: '-8%', width: '40vw', height: '40vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(78,159,212,.12),transparent 65%)', filter: 'var(--blur-glow)', pointerEvents: 'none' }} />
       <div style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto' }}>
         <div style={{ marginBottom: 'clamp(40px,5vw,64px)' }}>
-          <SectionHeading kicker="05 Código en acción" title="Cómo escribo el" accent="código" accentColor="var(--blue-400)" />
+          <SectionHeading kicker={t.kicker} title={t.title} accent={t.accent} accentColor="var(--blue-400)" />
         </div>
 
         <div data-reveal="1" style={{ ...revealStyle, display: 'grid', gridTemplateColumns: 'var(--showcase-cols, minmax(0,1fr))', gap: 'var(--gap-grid)', alignItems: 'stretch' }}>
@@ -109,7 +145,7 @@ export function CodeShowcase() {
             style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', padding: 'var(--space-3)', borderRadius: 'var(--radius-xl)', border: 'var(--border-blue)', background: 'rgba(13,32,54,.6)', backdropFilter: 'var(--blur-glass)', minWidth: 0, maxHeight: 'var(--showcase-rail-max, 620px)', overflow: 'auto' }}
           >
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', letterSpacing: 'var(--tracking-kicker)', textTransform: 'uppercase', color: 'var(--text-faint)', padding: 'var(--space-2) var(--space-2) var(--space-1)' }}>
-              Explorador
+              {t.explorer}
             </div>
             {snippets.map((snippet, index) => {
               const on = index === active;
@@ -168,7 +204,7 @@ export function CodeShowcase() {
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--blue-400)', padding: '4px 9px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(78,159,212,.2)', background: 'rgba(29,95,168,.08)' }}>
                 {current.language}
               </span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--text-faint)' }}>{lineCount} líneas</span>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', color: 'var(--text-faint)' }}>{lineCount} {t.lines}</span>
               <button
                 type="button"
                 data-ripple="1"
@@ -176,11 +212,11 @@ export function CodeShowcase() {
                 data-hover="border-color:var(--green-400);color:var(--text-strong);box-shadow:var(--glow-green)"
                 style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '9px 15px', borderRadius: 'var(--radius-pill)', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--text-body)', border: '1px solid rgba(33,224,127,.26)', background: 'rgba(33,224,127,.06)', cursor: 'pointer', transition: 'border-color var(--dur-base),box-shadow var(--dur-base),color var(--dur-base)' }}
               >
-                {copied ? 'Copiado ✓' : 'Copiar'}
+                {copied ? t.copied : t.copy}
               </button>
             </div>
 
-            <div style={{ position: 'relative', height: 'clamp(300px,42vh,430px)', overflow: 'auto', background: 'rgba(7,15,28,.6)' }}>
+            <div ref={scrollRef} style={{ position: 'relative', height: 'clamp(300px,42vh,430px)', overflow: 'auto', background: 'rgba(7,15,28,.6)' }}>
               <div style={{ display: 'flex', minHeight: '100%', opacity: fading ? 0 : 1, transform: `translateY(${fading ? '8px' : '0px'})`, transition: 'opacity var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out)' }}>
                 <div aria-hidden style={{ flex: 'none', padding: 'var(--space-4) 12px var(--space-4) var(--space-4)', textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-code)', lineHeight: 1.75, color: 'var(--text-faint)', userSelect: 'none', whiteSpace: 'pre' }}>
                   {gutter}
@@ -197,9 +233,9 @@ export function CodeShowcase() {
             </div>
 
             <div style={{ padding: 'var(--space-4)', borderTop: 'var(--border-faint)', opacity: fading ? 0 : 1, transition: 'opacity var(--dur-base) var(--ease-out)' }}>
-              <h3 style={{ margin: 0, fontSize: 'var(--text-h4)', fontWeight: 600, color: 'var(--text-strong)' }}>{current.title}</h3>
+              <h3 style={{ margin: 0, fontSize: 'var(--text-h4)', fontWeight: 600, color: 'var(--text-strong)' }}>{t.snippets[current.id]?.title ?? current.title}</h3>
               <p style={{ margin: '10px 0 0', maxWidth: 'var(--measure-body)', fontSize: 'var(--text-body-xs)', lineHeight: 'var(--leading-body)', color: 'var(--text-tertiary)', textWrap: 'pretty' }}>
-                {current.description}
+                {t.snippets[current.id]?.description ?? current.description}
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginTop: 'var(--space-3)' }}>
                 {current.tags.map((tag) => (

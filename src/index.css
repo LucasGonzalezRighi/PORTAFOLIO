@@ -122,6 +122,84 @@
     transition: color 0.25s, border-color 0.25s;
   }
   .nav-link:hover { color: var(--blue-400); border-color: var(--blue-400); }
+
+  /* Tarjeta flotante de edad del hero — se mete dentro del recorte en mobile */
+  .hero-age-card {
+    position: absolute;
+    top: -22px;
+    left: -26px;
+  }
+  @media (max-width: 719px) {
+    .hero-age-card {
+      top: -14px;
+      left: 10px;
+    }
+  }
+
+  /* Hero: en desktop ocupa la pantalla con el cue anclado abajo;
+     en mobile fluye natural y termina en la foto, con el cue debajo. */
+  .hero-section {
+    min-height: 100vh;
+  }
+  .hero-scrollcue {
+    position: absolute;
+    left: 50%;
+    bottom: 26px;
+    transform: translateX(-50%);
+  }
+  @media (max-width: 899px) {
+    .hero-section {
+      min-height: 0;
+      flex-direction: column;
+      padding-bottom: 28px;
+    }
+    .hero-scrollcue {
+      position: static;
+      transform: none;
+      margin-top: 30px;
+    }
+  }
+
+  /* ── Foto del hero: B&N → color con hover en TODO el recuadro ──
+     El :hover vive en el contenedor estático (no en la imagen que se
+     inclina con el tilt), así la interacción nunca parpadea. */
+  .hero-photo-img {
+    filter: grayscale(1) contrast(1.05);
+    transition: filter 0.55s var(--ease-out);
+  }
+  @media (hover: hover) {
+    .hero-photo:hover .hero-photo-img {
+      filter: grayscale(0) saturate(0.9) contrast(1.05);
+    }
+  }
+
+  /* ── Flip de las cards del stack ──
+     El :hover vive en el marco estático (.flip-card) y lo que rota es
+     .flip-inner: los límites no se mueven bajo el mouse → giro estable,
+     sin trastabilleos. En touch, el motor alterna .is-flipped con un tap. */
+  .flip-inner {
+    position: relative;
+    height: 100%;
+    min-height: 230px;
+    transform-style: preserve-3d;
+    transition: transform 0.8s var(--ease-flip);
+  }
+  @media (hover: hover) {
+    .flip-card:hover .flip-inner {
+      transform: rotateY(180deg);
+    }
+  }
+  .flip-inner.is-flipped {
+    transform: rotateY(180deg);
+  }
+
+  /* Chips de idiomas centrados en mobile */
+  @media (max-width: 899px) {
+    .about-langs {
+      justify-content: center;
+    }
+  }
+
 }
 
 /* Layout responsive del explorador de código (tokens de layout) */

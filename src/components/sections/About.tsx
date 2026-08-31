@@ -1,5 +1,6 @@
 import { about, services, type ServiceCard } from '@/content/about';
 import { SectionHeading } from '@/components/ui/SectionHeading';
+import { useLang } from '@/i18n/LanguageContext';
 import { revealStyle } from '@/lib/styles';
 
 const serviceTone = {
@@ -29,7 +30,7 @@ const serviceTone = {
   },
 } as const;
 
-function ServiceCardView({ card, delay }: { card: ServiceCard; delay: number }) {
+function ServiceCardView({ card, delay, title, description }: { card: ServiceCard; delay: number; title: string; description: string }) {
   const tone = serviceTone[card.tone];
   return (
     <div
@@ -61,10 +62,10 @@ function ServiceCardView({ card, delay }: { card: ServiceCard; delay: number }) 
             ))}
           </svg>
         </div>
-        <h3 style={{ margin: 0, fontSize: 'var(--text-h4)', fontWeight: 600 }}>{card.title}</h3>
+        <h3 style={{ margin: 0, fontSize: 'var(--text-h4)', fontWeight: 600 }}>{title}</h3>
       </div>
       <p style={{ margin: '14px 0 0', fontSize: 'var(--text-body-xs)', lineHeight: 'var(--leading-body)', color: 'var(--text-muted)', position: 'relative' }}>
-        {card.description}
+        {description}
       </p>
     </div>
   );
@@ -74,6 +75,7 @@ function ServiceCardView({ card, delay }: { card: ServiceCard; delay: number }) 
  * Sobre mí: bio + idiomas + cards de especialidades.
  */
 export function About() {
+  const { dict } = useLang();
   return (
     <section id="sobre" style={{ position: 'relative', padding: 'clamp(56px,7vw,104px) var(--gutter) var(--section-y)', background: 'rgba(5,8,22,.9)' }}>
       <div style={{ position: 'absolute', top: '10%', right: '-6%', width: '38vw', height: '38vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(29,95,168,.12),transparent 65%)', filter: 'blur(70px)', pointerEvents: 'none' }} />
@@ -81,13 +83,13 @@ export function About() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 'clamp(32px,4vw,72px)', alignItems: 'center', position: 'relative' }}>
           <div>
             <SectionHeading
-              kicker={about.heading.kicker}
-              title={about.heading.title}
-              accent={about.heading.accent}
+              kicker={dict.about.kicker}
+              title={dict.about.title}
+              accent={dict.about.accent}
               tail={about.heading.tail}
               accentColor={about.heading.accentColor}
             />
-            {about.paragraphs.map((paragraph, i) => (
+            {dict.about.paragraphs.map((paragraph, i) => (
               <p
                 key={paragraph.slice(0, 24)}
                 style={{
@@ -102,8 +104,8 @@ export function About() {
               </p>
             ))}
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '28px' }}>
-              {about.languages.map((lang) => (
+            <div className="about-langs" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '28px' }}>
+              {about.languages.map((lang, i) => (
                 <span
                   key={lang.label}
                   data-magnetic="1"
@@ -124,7 +126,8 @@ export function About() {
                   }}
                 >
                   <span style={{ width: '6px', height: '6px', flex: 'none', borderRadius: '50%', background: lang.color, boxShadow: `0 0 8px ${lang.color}` }} />
-                  {lang.label} <span style={{ color: 'var(--text-dim)' }}>— {lang.level}</span>
+                  {dict.about.languages[i].label}{' '}
+                  <span style={{ color: 'var(--text-dim)' }}>— {dict.about.languages[i].level}</span>
                 </span>
               ))}
             </div>
@@ -132,7 +135,13 @@ export function About() {
 
           <div style={{ display: 'grid', gap: '16px', alignSelf: 'end' }}>
             {services.map((card, i) => (
-              <ServiceCardView key={card.title} card={card} delay={80 + i * 80} />
+              <ServiceCardView
+                key={card.title}
+                card={card}
+                delay={80 + i * 80}
+                title={dict.about.services[i].title}
+                description={dict.about.services[i].description}
+              />
             ))}
           </div>
         </div>

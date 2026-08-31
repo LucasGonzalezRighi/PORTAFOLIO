@@ -1,14 +1,10 @@
 import { experiences, timelineYears, type Experience as Job } from '@/content/experience';
 import { SectionHeading } from '@/components/ui/SectionHeading';
+import { useLang } from '@/i18n/LanguageContext';
+import type { JobTexts } from '@/i18n/types';
 import { revealStyle, monoLabel } from '@/lib/styles';
 
-const filterButtons = [
-  { id: 'all', label: null, aria: 'Ver toda la experiencia' },
-  { id: 'dev', label: 'Desarrollador' },
-  { id: 'sup', label: 'Soporte técnico' },
-] as const;
-
-function JobCard({ job }: { job: Job }) {
+function JobCard({ job, texts, currentLabel, seeMoreLabel }: { job: Job; texts: JobTexts; currentLabel: string; seeMoreLabel: string }) {
   const accent = job.current ? 'green' : 'blue';
   const color = accent === 'green' ? 'var(--green-400)' : 'var(--blue-400)';
   const borderFront = job.current ? '1px solid rgba(33,224,127,.18)' : 'var(--border-blue)';
@@ -51,23 +47,23 @@ function JobCard({ job }: { job: Job }) {
                     <h3 style={{ margin: 0, fontSize: 'var(--text-h3)', fontWeight: 600 }}>{job.company}</h3>
                     {job.current && (
                       <span style={{ ...monoLabel, letterSpacing: '.12em', color: 'var(--bg-0)', background: 'var(--green-400)', padding: '4px 9px', borderRadius: '6px' }}>
-                        Actualidad
+                        {currentLabel}
                       </span>
                     )}
                   </div>
-                  <div style={{ marginTop: '6px', fontSize: '15px', color: 'var(--blue-400)' }}>{job.role}</div>
+                  <div style={{ marginTop: '6px', fontSize: '15px', color: 'var(--blue-400)' }}>{texts.role}</div>
                 </div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-dim)' }}>{job.period}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-dim)' }}>{texts.period}</div>
               </div>
               <ul style={{ margin: '18px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: '10px', position: 'relative' }}>
-                {job.bullets.map((bullet) => (
+                {texts.bullets.map((bullet) => (
                   <li key={bullet.slice(0, 24)} style={{ display: 'flex', gap: '12px', fontSize: 'var(--text-body-xs)', lineHeight: 1.6, color: 'var(--text-tertiary)' }}>
                     <span style={{ color, flex: 'none' }}>▸</span>
                     {bullet}
                   </li>
                 ))}
               </ul>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '20px', ...monoLabel }}>ver más detalles</div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '20px', ...monoLabel }}>{seeMoreLabel}</div>
             </div>
             {/* Dorso: detalle */}
             <div
@@ -87,10 +83,10 @@ function JobCard({ job }: { job: Job }) {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                <h4 style={{ margin: 0, fontSize: '17px', fontWeight: 600, color: '#fff' }}>{job.detailTitle}</h4>
+                <h4 style={{ margin: 0, fontSize: '17px', fontWeight: 600, color: '#fff' }}>{texts.detailTitle}</h4>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: '14px 24px', marginTop: '18px' }}>
-                {job.details.map((d) => (
+                {texts.details.map((d) => (
                   <div key={d.label}>
                     <div style={{ ...monoLabel, color }}>{d.label}</div>
                     <div style={{ marginTop: '5px', fontSize: '13.5px', lineHeight: 1.55, color: 'var(--text-tertiary)' }}>{d.value}</div>
@@ -110,6 +106,12 @@ function JobCard({ job }: { job: Job }) {
  * cards con flip que muestran el detalle.
  */
 export function Experience() {
+  const { dict } = useLang();
+  const filterButtons = [
+    { id: 'all', label: null, aria: dict.experience.filterAll },
+    { id: 'dev', label: dict.experience.filterDev },
+    { id: 'sup', label: dict.experience.filterSup },
+  ] as const;
   return (
     <section
       id="experiencia"
@@ -119,7 +121,7 @@ export function Experience() {
       <div data-parallax="1" data-speed="0.08" style={{ position: 'absolute', top: '20%', left: '-10%', width: '44vw', height: '44vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(33,224,127,.1),transparent 65%)', filter: 'blur(80px)', pointerEvents: 'none' }} />
       <div style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto' }}>
         <div style={{ marginBottom: 'clamp(44px,5vw,72px)' }}>
-          <SectionHeading kicker="03 Experiencia" title="Productos, operación y sistemas" accent="críticos" accentColor="var(--blue-400)" />
+          <SectionHeading kicker={dict.experience.kicker} title={dict.experience.title} accent={dict.experience.accent} accentColor="var(--blue-400)" />
         </div>
 
         {/* Filtro */}
@@ -133,7 +135,7 @@ export function Experience() {
                 data-magnetic="1"
                 data-sweep-auto="border"
                 data-exp-btn={btn.id}
-                aria-label={'aria' in btn ? btn.aria : undefined}
+                aria-label={btn.label === null ? btn.aria : undefined}
                 style={{
                   position: 'relative',
                   cursor: 'pointer',
@@ -151,7 +153,9 @@ export function Experience() {
                   alignItems: 'center',
                 }}
               >
-                {btn.label ?? (
+                {btn.label ? (
+                  <span style={{ position: 'relative', zIndex: 1 }}>{btn.label}</span>
+                ) : (
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                     <path d="M4 6h16M4 12h16M4 18h16" />
                   </svg>
@@ -189,7 +193,13 @@ export function Experience() {
           </div>
 
           {experiences.map((job) => (
-            <JobCard key={job.company} job={job} />
+            <JobCard
+              key={job.company}
+              job={job}
+              texts={dict.experience.jobs[job.company]}
+              currentLabel={dict.experience.current}
+              seeMoreLabel={dict.experience.seeMore}
+            />
           ))}
         </div>
       </div>

@@ -1,5 +1,8 @@
 import { projects, type Project } from '@/content/projects';
 import { SectionHeading } from '@/components/ui/SectionHeading';
+import { useLang } from '@/i18n/LanguageContext';
+import type { Dict } from '@/i18n/types';
+import { asset } from '@/lib/asset';
 import { highlight } from '@/lib/highlight';
 import { revealStyle, monoLabel } from '@/lib/styles';
 
@@ -19,7 +22,7 @@ function FanSheet({ index, image, featured }: { index: 1 | 2; image: string; fea
         overflow: 'hidden',
         borderRadius: 'var(--radius-xl)',
         border: featured ? undefined : `1px solid rgba(78,159,212,${index === 1 ? '.2' : '.14'})`,
-        background: `var(--bg-1) url("${image}") center top/cover no-repeat`,
+        background: `var(--bg-1) url("${asset(image)}") center top/cover no-repeat`,
         transformOrigin: index === 1 ? '0% 100%' : '100% 100%',
         transform: 'rotate(0deg) translate(0,0) scale(1)',
         transition: 'transform .5s var(--ease-out),opacity .5s var(--ease-out)',
@@ -55,7 +58,7 @@ function CodePane({ file, code, featured }: { file: string; code: string; featur
   );
 }
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({ project, t }: { project: Project; t: Dict['projects'] }) {
   const featured = project.featured;
   return (
     <a
@@ -66,7 +69,7 @@ function ProjectCard({ project }: { project: Project }) {
       target="_blank"
       rel="noopener"
       data-fan="1"
-      aria-label={`Abrir ${project.title} en una pestaña nueva`}
+      aria-label={t.openAria.replace('{name}', project.title)}
       style={{
         ...revealStyle,
         gridColumn: featured ? '1 / -1' : undefined,
@@ -90,7 +93,7 @@ function ProjectCard({ project }: { project: Project }) {
       {/* Visual: imagen sobre mini editor */}
       <div style={{ position: 'relative', zIndex: 2, aspectRatio: featured ? '1.669' : '16/10', overflow: 'hidden', borderRadius: '23px 23px 0 0', background: 'var(--bg-1)' }}>
         {project.codePane && <CodePane file={project.codePane.file} code={project.codePane.code} featured={featured} />}
-        <img src={project.image} alt={`Captura de ${project.title}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
+        <img src={asset(project.image)} alt={`${t.imageAlt} ${project.title}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
         <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(180deg,transparent ${featured ? '40%' : '45%'},rgba(5,8,22,.9))`, pointerEvents: 'none' }} />
       </div>
 
@@ -99,7 +102,7 @@ function ProjectCard({ project }: { project: Project }) {
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
           {project.badge && (
             <span style={{ ...monoLabel, letterSpacing: '.14em', color: 'var(--bg-0)', background: 'var(--lime-400)', padding: '4px 9px', borderRadius: '6px' }}>
-              {project.badge}
+              {t.featuredBadge}
             </span>
           )}
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-kicker)', color: 'var(--text-dim)' }}>{project.tagline}</span>
@@ -108,11 +111,11 @@ function ProjectCard({ project }: { project: Project }) {
           {project.title}
         </h3>
         <p style={{ margin: featured ? '12px 0 0' : '10px 0 0', maxWidth: '60ch', fontSize: featured ? 'var(--text-body-sm)' : 'var(--text-body-xs)', lineHeight: featured ? 1.65 : 1.6, color: 'var(--text-tertiary)' }}>
-          {project.description}
+          {t.descriptions[project.title] ?? project.description}
         </p>
         {featured && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '20px', fontSize: '14px', fontWeight: 500, color: 'var(--lime-400)' }}>
-            Ver proyecto{' '}
+            {t.viewProject}{' '}
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M7 17L17 7M9 7h8v8" />
             </svg>
@@ -146,6 +149,8 @@ const moreButtonStyle = {
  * y bloque expandible "Ver más proyectos".
  */
 export function Projects() {
+  const { dict } = useLang();
+  const t = dict.projects;
   const visible = projects.filter((p) => !p.extra);
   const extras = projects.filter((p) => p.extra);
 
@@ -155,31 +160,31 @@ export function Projects() {
       <div style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '24px', marginBottom: 'clamp(40px,5vw,64px)' }}>
           <div style={{ flex: '1 1 420px' }}>
-            <SectionHeading kicker="04 Proyectos" title="Productos en" accent="producción" accentColor="var(--blue-400)" />
+            <SectionHeading kicker={t.kicker} title={t.title} accent={t.accent} accentColor="var(--blue-400)" />
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 'clamp(28px,3.4vw,52px)' }}>
           {visible.map((project) => (
-            <ProjectCard key={project.title} project={project} />
+            <ProjectCard key={project.title} project={project} t={t} />
           ))}
 
           <div data-more-row="1" style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '20px', margin: '4px 0' }}>
             <span aria-hidden style={dividerLeft} />
             <button type="button" data-more-btn="1" data-magnetic="1" data-sweep-auto="border" data-hover="color:#fff;border-color:var(--blue-400)" style={moreButtonStyle}>
-              Ver más proyectos
+              <span style={{ position: 'relative', zIndex: 1 }}>{t.more}</span>
             </button>
             <span aria-hidden style={dividerRight} />
           </div>
 
           {extras.map((project) => (
-            <ProjectCard key={project.title} project={project} />
+            <ProjectCard key={project.title} project={project} t={t} />
           ))}
 
           <div data-less-row="1" style={{ display: 'none', gridColumn: '1 / -1', alignItems: 'center', gap: '20px', margin: '4px 0' }}>
             <span aria-hidden style={dividerLeft} />
             <button type="button" data-less-btn="1" data-magnetic="1" data-sweep-auto="border" data-hover="color:#fff;border-color:var(--blue-400)" style={{ ...moreButtonStyle, display: 'inline-flex', alignItems: 'center', gap: '9px' }}>
-              Ver menos{' '}
+              <span style={{ position: 'relative', zIndex: 1 }}>{t.less}</span>{' '}
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M12 19V5M6 11l6-6 6 6" />
               </svg>

@@ -51,6 +51,18 @@ export const colors = {
     dim: '#7C93A9',
     faint: '#62809A',
   },
+  /** Colores de identidad por tecnología (marquee del stack) */
+  tech: {
+    typescript: '#3B8BD8', // azul
+    nextjs: '#9AACBF', // gris
+    nestjs: '#E8C547', // amarillo
+    mongodb: '#6BF5A8', // verde claro
+    n8n: '#FF4A4A', // rojo intenso
+    redis: '#E5484D', // rojo
+    docker: '#1D5FA8', // azul oscuro
+    python: '#A6F5C6', // verde más claro
+    salesforce: '#5FC8F0', // celeste
+  },
 } as const;
 
 // ─────────────────────────────────────────────────────────────
@@ -169,6 +181,12 @@ export function cssVariables(): Record<string, string> {
     '--code-key': colors.code.key, '--code-str': colors.code.str, '--code-fn': colors.code.fn,
     '--code-num': colors.code.num, '--code-type': colors.code.type,
     '--code-comment': colors.code.comment, '--code-punct': colors.code.punct,
+    /* tecnologías */
+    '--tech-typescript': colors.tech.typescript, '--tech-nextjs': colors.tech.nextjs,
+    '--tech-nestjs': colors.tech.nestjs, '--tech-mongodb': colors.tech.mongodb,
+    '--tech-n8n': colors.tech.n8n, '--tech-redis': colors.tech.redis,
+    '--tech-docker': colors.tech.docker, '--tech-python': colors.tech.python,
+    '--tech-salesforce': colors.tech.salesforce,
     /* texto */
     '--text-strong': colors.text.strong, '--text-body': colors.text.body,
     '--text-secondary': colors.text.secondary, '--text-tertiary': colors.text.tertiary,

@@ -1,7 +1,12 @@
+import { useMediaQuery } from '@/hooks/useMediaQuery';
+
 /**
  * Spotlight y anillo que siguen el cursor (animados por el motor de efectos).
+ * En dispositivos táctiles no se renderiza: no hay cursor que seguir.
  */
 export function CursorFx() {
+  const isTouch = useMediaQuery('(pointer: coarse)');
+  if (isTouch) return null;
   return (
     <>
       <div

@@ -35,6 +35,8 @@ type Cleanup = () => void;
 const reducedMotion = () =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+const coarsePointer = () => window.matchMedia('(pointer: coarse)').matches;
+
 export class EffectsEngine {
   private cleanups: Cleanup[] = [];
   /** Restauraciones de DOM (typewriters/títulos) para un destroy limpio */
@@ -81,6 +83,7 @@ export class EffectsEngine {
   // ── ciclo de vida ──────────────────────────────────────────
   init() {
     this.step(() => this.hoverStyles());
+    this.step(() => this.tapFlips());
     this.step(() => this.reveal());
     this.step(() => this.counters());
     this.step(() => this.navScroll());
@@ -94,9 +97,12 @@ export class EffectsEngine {
     }
     this.step(() => this.textAnims());
     this.step(() => this.typewriters());
-    this.step(() => this.tilt());
+    if (!coarsePointer()) {
+      // Efectos de puntero fino: sin sentido (y molestos) en táctil
+      this.step(() => this.tilt());
+      this.step(() => this.magnetic());
+    }
     this.step(() => this.fans());
-    this.step(() => this.magnetic());
     this.step(() => this.ripple());
     this.step(() => this.sweepsAuto());
     this.step(() => this.sweeps());
@@ -109,11 +115,14 @@ export class EffectsEngine {
     // todos los inicializadores son idempotentes vía dataset flags.
     const rescan = () => {
       this.step(() => this.hoverStyles());
+      this.step(() => this.tapFlips());
       this.step(() => this.reveal());
       if (!reducedMotion()) {
-        this.step(() => this.magnetic());
+        if (!coarsePointer()) {
+          this.step(() => this.magnetic());
+          this.step(() => this.tilt());
+        }
         this.step(() => this.ripple());
-        this.step(() => this.tilt());
         this.step(() => this.fans());
         this.step(() => this.sweepsAuto());
         this.step(() => this.sweeps());
@@ -152,7 +161,7 @@ export class EffectsEngine {
     // (StrictMode, HMR, remount) pueda volver a enlazar todo.
     const flags = [
       'rvInit', 'rvDone', 'cInit', 'cRan', 'twInit', 'twDone', 'twGroupDone',
-      'aInit', 'tInit', 'fanBound', 'mInit', 'rInit', 'swBound', 'fInit', 'hvInit',
+      'aInit', 'tInit', 'fanBound', 'mInit', 'rInit', 'swBound', 'fInit', 'hvInit', 'tfInit',
     ];
     document
       .querySelectorAll<HTMLElement>(
@@ -192,6 +201,18 @@ export class EffectsEngine {
         decls.forEach(([p]) => {
           el.style.setProperty(p, prev.get(p) || '');
         });
+      });
+    });
+  }
+
+  // ── flip por tap en pantallas táctiles (cards del stack) ───
+  private tapFlips() {
+    if (!coarsePointer()) return;
+    document.querySelectorAll<HTMLElement>('[data-tapflip]').forEach((el) => {
+      if (el.dataset.tfInit) return;
+      el.dataset.tfInit = '1';
+      this.on(el, 'click', () => {
+        el.classList.toggle('is-flipped');
       });
     });
   }
@@ -846,6 +867,7 @@ export class EffectsEngine {
 
   // ── spotlight + anillo de cursor ───────────────────────────
   private pointer() {
+    if (coarsePointer()) return; // sin cursor en táctil
     const spot = document.querySelector<HTMLElement>('[data-spot]');
     const ring = document.querySelector<HTMLElement>('[data-ring]');
     if (!spot && !ring) return;
