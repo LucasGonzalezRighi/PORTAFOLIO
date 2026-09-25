@@ -2,7 +2,7 @@ import { marquee, stackCategories, type StackCategory, type StackItem } from '@/
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import { useLang } from '@/i18n/LanguageContext';
 import { asset } from '@/lib/asset';
-import { revealStyle, tones } from '@/lib/styles';
+import { tones } from '@/lib/styles';
 
 function ItemBadge({ item, size, tone }: { item: StackItem; size: number; tone: (typeof tones)[keyof typeof tones] }) {
   if (item.icon) {
@@ -29,16 +29,28 @@ function ItemBadge({ item, size, tone }: { item: StackItem; size: number; tone: 
   );
 }
 
-function FlipCard({ category, title }: { category: StackCategory; title: string }) {
+/** Dirección del giro según la columna: izquierda gira a la izquierda,
+ *  centro arriba (fila 1) / abajo (fila 2), derecha a la derecha. */
+type FlipDir = 'left' | 'right' | 'up' | 'down';
+const FLIP_DIRS: FlipDir[] = ['left', 'up', 'right', 'left', 'down', 'right'];
+const FLIP_TRANSFORM: Record<FlipDir, string> = {
+  left: 'rotateY(-180deg)',
+  right: 'rotateY(180deg)',
+  up: 'rotateX(180deg)',
+  down: 'rotateX(-180deg)',
+};
+
+function FlipCard({ category, title, dir }: { category: StackCategory; title: string; dir: FlipDir }) {
   const tone = tones[category.tone];
+  const vertical = dir === 'up' || dir === 'down';
   return (
     <div
-      data-reveal="1"
-      data-delay={category.revealDelay || undefined}
+      // Entrada "desde el fondo" ligada al scroll (EffectsEngine.scrollFx)
+      data-depthcard="1"
       className="flip-card"
-      style={{ ...revealStyle, perspective: '1500px', minHeight: '230px' }}
+      style={{ perspective: '1500px', minHeight: '230px' }}
     >
-      <div className="flip-inner" data-tapflip="1">
+      <div className="flip-inner" data-tapflip="1" style={{ ['--flip' as never]: FLIP_TRANSFORM[dir] }}>
         {/* Frente */}
         <div
           style={{
@@ -85,7 +97,9 @@ function FlipCard({ category, title }: { category: StackCategory; title: string 
             backdropFilter: 'var(--blur-glass)',
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)',
+            // el dorso se pre-gira en el mismo eje del giro (si no, en los
+            // giros verticales el texto quedaría patas para arriba)
+            transform: vertical ? 'rotateX(180deg)' : 'rotateY(180deg)',
           }}
         >
           {category.items.map((item) => (
@@ -115,33 +129,23 @@ function FlipCard({ category, title }: { category: StackCategory; title: string 
 
 /**
  * Stack tecnológico: cards con flip por categoría + marquee de tecnologías.
- * La sección entra con zoom ligado al scroll (data-zoom-section).
+ * Movimiento ligado al scroll (EffectsEngine.scrollFx), sin pin:
+ *  - Entrada: las cards vienen desde el fondo (chicas, apagadas y
+ *    desenfocadas) y se acercan escalonadas por columna (data-depthcard).
+ *  - Salida: la sección se desenfoca y se funde al irse (data-exitfx).
  */
+// Separador de nombres sobre el arco (NBSP: los espacios normales colapsan en SVG)
+const ARC_SEP = '\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0';
+
 export function Stack() {
   const { dict } = useLang();
-  const marqueeRow = (keyPrefix: string) => (
-    <div style={{ display: 'flex', gap: '56px', alignItems: 'center' }}>
-      {marquee.map((tech) => (
-        <span
-          key={`${keyPrefix}-${tech.label}`}
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'clamp(15px,1.5vw,20px)',
-            color: tech.color ?? 'var(--text-faint)',
-            letterSpacing: '.04em',
-          }}
-        >
-          {tech.label}
-        </span>
-      ))}
-    </div>
-  );
 
   return (
     <section
       id="stack"
-      data-zoom-section="1"
-      style={{ position: 'relative', padding: 'var(--section-y) 0', background: 'rgba(5,8,22,.86)', overflow: 'hidden', borderRadius: '28px', transformOrigin: '50% 18%', willChange: 'transform,opacity' }}
+      data-exitfx="1"
+      data-overlayin="1"
+      style={{ position: 'relative', padding: 'var(--section-y) 0 calc(var(--section-y) + 16vw)', background: 'rgba(5,8,22,.86)', overflow: 'hidden', transformOrigin: '50% 100%', willChange: 'transform,opacity' }}
     >
       <div
         style={{
@@ -159,30 +163,38 @@ export function Stack() {
       />
       <div style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto', padding: '0 var(--gutter)' }}>
         <SectionHeading kicker={dict.stack.kicker} title={dict.stack.title} accent={dict.stack.accent} accentColor="var(--green-400)" />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 'var(--gap-card)', marginTop: 'clamp(40px,5vw,64px)' }}>
+        {/* perspective: da profundidad al translateZ de la entrada de las cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))', gap: 'var(--gap-card)', marginTop: 'clamp(40px,5vw,64px)', perspective: '1200px' }}>
           {stackCategories.map((category, i) => (
-            <FlipCard key={category.title} category={category} title={dict.stack.categories[i]} />
+            <FlipCard key={category.title} category={category} title={dict.stack.categories[i]} dir={FLIP_DIRS[i % FLIP_DIRS.length]} />
           ))}
         </div>
       </div>
 
-      {/* Marquee de tecnologías */}
-      <div
-        style={{
-          position: 'relative',
-          marginTop: 'clamp(48px,6vw,88px)',
-          padding: '22px 0',
-          borderTop: '1px solid rgba(78,159,212,.1)',
-          borderBottom: '1px solid rgba(78,159,212,.1)',
-          maskImage: 'linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)',
-          WebkitMaskImage: 'linear-gradient(90deg,transparent,#000 12%,#000 88%,transparent)',
-          overflow: 'hidden',
-        }}
-      >
-        <div style={{ display: 'flex', width: 'max-content', gap: '56px', animation: 'marquee 34s linear infinite' }}>
-          {marqueeRow('a')}
-          {marqueeRow('b')}
-        </div>
+      {/* Marquee de tecnologías, versión arco: EL MISMO componente de siempre
+          (fondo oscuro, cada tecnología con su color de tokens `--tech-*`),
+          pero con la estructura curva y el desplazamiento ligado al scroll
+          de damrod (data-arctext → EffectsEngine.scrollFx). */}
+      <div aria-hidden style={{ position: 'absolute', left: '50%', bottom: '-6vw', transform: 'translateX(-50%)', width: 'max(150vw, 1100px)', pointerEvents: 'none', zIndex: 6 }}>
+        <svg viewBox="0 0 1400 360" width="100%" style={{ display: 'block' }}>
+          {/* Banda: cinta fina (la mitad de alto) con curva más cerrada y
+              más larga — los extremos salen bien por fuera de la pantalla */}
+          <path id="stack-arc" d="M -420 560 Q 700 -230 1820 560" fill="none" stroke="rgb(10,22,40)" strokeWidth="44" />
+          {/* Hairlines superior e inferior, como los bordes de la tira */}
+          <path d="M -420 538 Q 700 -252 1820 538" fill="none" stroke="rgba(78,159,212,.16)" strokeWidth="1.2" />
+          <path d="M -420 582 Q 700 -208 1820 582" fill="none" stroke="rgba(78,159,212,.16)" strokeWidth="1.2" />
+          <text fontFamily="var(--font-mono)" fontWeight={600} fontSize="12.5" letterSpacing="1.4" dominantBaseline="middle" xmlSpace="preserve">
+            <textPath href="#stack-arc" data-arctext="1" startOffset="-10%">
+              {[0, 1, 2, 3, 4, 5].map((rep) =>
+                marquee.map((tech) => (
+                  <tspan key={`${rep}-${tech.label}`} fill={tech.color ?? 'var(--text-faint)'}>
+                    {tech.label + ARC_SEP}
+                  </tspan>
+                )),
+              )}
+            </textPath>
+          </text>
+        </svg>
       </div>
     </section>
   );

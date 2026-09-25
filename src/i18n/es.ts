@@ -18,11 +18,12 @@ export const es: Dict = {
   },
   hero: {
     badges: ['Desarrollo web', 'Automatización', 'Soporte técnico', 'Infraestructura'],
+    greeting: 'Hola, soy',
     tagline:
       'Full Stack Developer y especialista en infraestructura. Construyo plataformas web modulares, automatizo lo que se repite e integro IA en procesos de negocio reales.',
     statLabels: ['Años en producción', 'Proyectos entregados', 'Promedio de Sistemas'],
     cv: 'Mi CV',
-    viewProjects: 'Ver proyectos',
+    viewProjects: 'Mi laburo',
     scroll: 'scroll',
     ageLabel: 'edad',
   },
@@ -31,14 +32,14 @@ export const es: Dict = {
     title: 'Código que compile y que además',
     accent: 'inspire',
     paragraphs: [
-      'Soy Lucas González Righi, Full Stack Developer y especialista en soporte técnico e informático avanzado. Curioso por naturaleza, con ganas constantes de aprender y de crear cosas que funcionen y den gusto usarlas.',
-      'Me interesa un entorno colaborativo (mejor si es híbrido, así el mate es real y los commits remotos), donde pueda aportar ideas, escribir buen código, automatizar lo que se repite y reírnos un poco mientras resolvemos problemas complejos.',
-      'Quiero seguir creciendo profesionalmente mientras sumo valor a productos con impacto real.',
+      "Soy programador y me encanta inventar. Arranco con una idea, la pienso, la rompo y la vuelvo a armar hasta que se convierte en un producto que clientes reales usan todos los días. Innovar es la parte que más disfruto.",
+      "Además soy técnico en sistemas: mantenimiento y soporte de soft y hard, de la compu que no prende al sistema que se cayó. Trabajo en equipo, soy proactivo y vivo aprendiendo. La IA es mi compañera de banco: rápida, brillante y convencida de cosas que no existen.",
     ],
+    langsLabel: 'Idiomas en los que trabajo',
     languages: [
       { label: 'Español', level: 'nativo' },
       { label: 'Português', level: 'nativo' },
-      { label: 'English', level: 'intermedio' },
+      { label: 'English', level: 'B1' },
     ],
     services: [
       {
@@ -73,6 +74,7 @@ export const es: Dict = {
   },
   experience: {
     kicker: '03 Experiencia',
+    folderLabel: 'Mi Xp',
     title: 'Productos, operación y sistemas',
     accent: 'críticos',
     filterAll: 'Ver toda la experiencia',
@@ -272,11 +274,31 @@ export const es: Dict = {
   },
   contact: {
     kicker: '07 Contacto',
+    giant: 'CONTACTO',
     title: 'Construyamos algo que',
     accent: 'valga la pena',
     blurb:
       'Disponible para posiciones full stack, proyectos de automatización e integraciones de IA. Respondo en el día.',
     mailCta: 'Escribime un mail',
+    form: {
+      nameLabel: 'Nombre completo',
+      namePh: 'Ingresá tu nombre',
+      emailLabel: 'Correo electrónico',
+      emailPh: 'tu@email.com',
+      typeLabel: 'Tipo de consulta',
+      typePh: 'Seleccioná una opción',
+      typeOptions: ['Propuesta laboral', 'Proyecto freelance', 'Automatización / IA', 'Otro'],
+      msgLabel: 'Mensaje',
+      msgPh: 'Contame en qué te puedo ayudar…',
+      send: 'Enviar mensaje',
+      sending: 'Enviando…',
+      success: '¡Mensaje enviado! Te respondo en el día.',
+      error: 'No se pudo enviar. Escribime directo a mi email.',
+      reqName: 'Poné tu nombre',
+      reqEmail: 'Poné tu email',
+      badEmail: 'Ese email no parece válido',
+      reqMsg: 'Contame algo en el mensaje',
+    },
     emailLabel: 'Email',
     phoneLabel: 'Teléfono',
     locationLabel: 'Ubicación',

@@ -18,7 +18,7 @@ function FanSheet({ index, image, featured }: { index: 1 | 2; image: string; fea
         left: 0,
         right: 0,
         bottom: '32px',
-        zIndex: 0,
+        zIndex: -1,
         overflow: 'hidden',
         borderRadius: 'var(--radius-xl)',
         border: featured ? undefined : `1px solid rgba(78,159,212,${index === 1 ? '.2' : '.14'})`,
@@ -80,18 +80,18 @@ function ProjectCard({ project, t }: { project: Project; t: Dict['projects'] }) 
         borderRadius: 'var(--radius-xl)',
         isolation: 'isolate',
         border: `1px solid rgba(78,159,212,${featured ? '.18' : '.14'})`,
-        background: featured ? 'rgba(13,32,54,.7)' : 'rgba(11,27,46,.68)',
+        background: featured ? 'rgb(12,29,49)' : 'rgb(10,25,42)',
         backdropFilter: 'var(--blur-glass)',
         color: '#fff',
-        transformStyle: 'preserve-3d',
         boxShadow: featured ? '0 40px 90px -60px rgba(78,159,212,.5)' : undefined,
       }}
     >
       <FanSheet index={2} image={project.sheets[1]} featured={featured} />
       <FanSheet index={1} image={project.sheets[0]} featured={featured} />
 
-      {/* Visual: imagen sobre mini editor */}
-      <div style={{ position: 'relative', zIndex: 2, aspectRatio: featured ? '1.669' : '16/10', overflow: 'hidden', borderRadius: '23px 23px 0 0', background: 'var(--bg-1)' }}>
+      {/* Visual: imagen sobre mini editor. flex:1 → llena la altura sobrante
+          de la fila: la imagen del frente siempre mide lo mismo que la card */}
+      <div style={{ position: 'relative', zIndex: 2, flex: '1 0 auto', aspectRatio: featured ? '1.669' : '16/10', overflow: 'hidden', borderRadius: '23px 23px 0 0', background: 'var(--bg-1)' }}>
         {project.codePane && <CodePane file={project.codePane.file} code={project.codePane.code} featured={featured} />}
         <img src={asset(project.image)} alt={`${t.imageAlt} ${project.title}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }} />
         <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(180deg,transparent ${featured ? '40%' : '45%'},rgba(5,8,22,.9))`, pointerEvents: 'none' }} />
@@ -155,7 +155,7 @@ export function Projects() {
   const extras = projects.filter((p) => p.extra);
 
   return (
-    <section id="proyectos" style={{ position: 'relative', padding: 'var(--section-y) var(--gutter)', background: 'rgba(5,8,22,.86)' }}>
+    <section id="proyectos" data-secfx="rise" style={{ position: 'relative', padding: 'var(--section-y) var(--gutter)', background: 'rgba(5,8,22,.86)', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '80vw', height: '40vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(29,95,168,.1),transparent 60%)', filter: 'blur(90px)', pointerEvents: 'none' }} />
       <div style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '24px', marginBottom: 'clamp(40px,5vw,64px)' }}>

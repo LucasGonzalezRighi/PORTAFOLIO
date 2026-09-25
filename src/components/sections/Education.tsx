@@ -59,7 +59,7 @@ export function Education() {
   const { dict } = useLang();
   const t = dict.education;
   return (
-    <section id="certificaciones" style={{ position: 'relative', padding: 'var(--section-y) var(--gutter)', background: 'rgba(7,13,26,.9)' }}>
+    <section id="certificaciones" data-secfx="rise" style={{ position: 'relative', padding: 'var(--section-y) var(--gutter)', background: 'rgba(7,13,26,.9)' }}>
       <div style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto' }}>
         <div style={{ marginBottom: 'clamp(40px,5vw,64px)' }}>
           <SectionHeading kicker={t.kicker} title={t.title} accent={t.accent} accentColor="var(--green-400)" />
@@ -96,7 +96,8 @@ export function Education() {
           })}
         </div>
 
-        <div data-reveal="1" data-delay="80" style={{ ...revealStyle, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: '12px', marginTop: '18px' }}>
+        {/* Grilla fija (1/2/3 columnas): con auto-fit el último ítem quedaba huérfano */}
+        <div data-reveal="1" data-delay="80" className="edu-chips" style={{ ...revealStyle, display: 'grid', gap: '12px', marginTop: '18px' }}>
           {certifications.map((cert, i) => {
             const tone = certTone[cert.tone];
             return (

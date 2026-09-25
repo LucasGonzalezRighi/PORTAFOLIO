@@ -77,9 +77,9 @@ function ServiceCardView({ card, delay, title, description }: { card: ServiceCar
 export function About() {
   const { dict } = useLang();
   return (
-    <section id="sobre" style={{ position: 'relative', padding: 'clamp(56px,7vw,104px) var(--gutter) var(--section-y)', background: 'rgba(5,8,22,.9)' }}>
+    <section id="sobre" data-secfx="rise" data-cardexit="1" style={{ position: 'relative', padding: 'clamp(56px,7vw,104px) var(--gutter) var(--section-y)', background: 'rgba(5,8,22,.9)' }}>
       <div style={{ position: 'absolute', top: '10%', right: '-6%', width: '38vw', height: '38vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(29,95,168,.12),transparent 65%)', filter: 'blur(70px)', pointerEvents: 'none' }} />
-      <div style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto' }}>
+      <div data-cardcontent="1" style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(320px,1fr))', gap: 'clamp(32px,4vw,72px)', alignItems: 'center', position: 'relative' }}>
           <div>
             <SectionHeading
@@ -104,7 +104,11 @@ export function About() {
               </p>
             ))}
 
-            <div className="about-langs" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '28px' }}>
+            {/* Etiqueta de contexto para los chips (feedback de diseño) */}
+            <div className="about-langs" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--text-faint)', marginTop: '30px', display: 'flex' }}>
+              {dict.about.langsLabel}
+            </div>
+            <div className="about-langs" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '12px' }}>
               {about.languages.map((lang, i) => (
                 <span
                   key={lang.label}

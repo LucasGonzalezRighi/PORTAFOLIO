@@ -2,6 +2,15 @@ import { site } from '@/content/site';
 import { useLang } from '@/i18n/LanguageContext';
 import { asset } from '@/lib/asset';
 import { monoLabel } from '@/lib/styles';
+import { marquee } from '@/content/stack';
+
+/** Filas de texto gigante del stack que se ven detrás de la tarjeta del hero
+ *  cuando se inclina (cada fila arranca en otra tecnología). */
+const STACK_ROWS = Array.from({ length: 7 }, (_, i) => {
+  const labels = marquee.map((m) => m.label.toUpperCase());
+  const rot = [...labels.slice((i * 3) % labels.length), ...labels.slice(0, (i * 3) % labels.length)];
+  return [...rot, ...rot].join('  ');
+});
 
 const statNumber = {
   fontSize: 'clamp(30px,3vw,42px)',
@@ -16,18 +25,34 @@ const statNumber = {
 export function Hero() {
   const { dict } = useLang();
   return (
+    // Escenario 3D: al scrollear, el hero se vuelve tarjeta y se inclina hacia
+    // adentro (borde superior al fondo) dejando ver el stack gigante detrás.
+    // Estilos escritos por EffectsEngine.scrollFx (data-herotilt).
+    <div className="hero-stage" data-herotilt="1">
+    <div className="hero-stacktext" aria-hidden>
+      {STACK_ROWS.map((row, i) => (
+        <div key={i} className="hero-stacktext-row">
+          {row}
+        </div>
+      ))}
+    </div>
     <section
       id="top"
       className="hero-section"
       style={{
-        position: 'relative',
+        // sticky: queda "pineado" mientras se inclina (el motor ajusta top
+        // para que en mobile se vea completo antes de pinear)
+        position: 'sticky',
+        top: 0,
         display: 'flex',
         alignItems: 'center',
         padding: 'clamp(110px,13vh,160px) var(--gutter) clamp(56px,7vh,80px)',
       }}
     >
+      {/* Fondo + borde de la tarjeta (aparece al scrollear) */}
+      <div aria-hidden className="hero-card-bg" />
       {/* Decoración de fondo propia del hero */}
-      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', borderRadius: 'inherit' }}>
         <div
           style={{
             position: 'absolute',
@@ -61,9 +86,14 @@ export function Hero() {
         }}
       >
         <div style={{ position: 'relative' }}>
+          {/* Saludo que humaniza la presentación (feedback de diseño) */}
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-kicker)', letterSpacing: '.18em', textTransform: 'uppercase', color: 'var(--green-400)', marginBottom: '14px', animation: 'fadein 1s .05s var(--ease-out) both' }}>
+            {'// '}{dict.hero.greeting}
+          </div>
           <h1 style={{ margin: 0, fontSize: 'var(--text-h1)', fontWeight: 600, lineHeight: 'var(--leading-h1)', letterSpacing: 'var(--tracking-h1)' }}>
             <span style={{ display: 'block', overflow: 'hidden' }}>
-              <span style={{ display: 'block', animation: 'rise 1s .15s var(--ease-out) both' }}>{site.firstName}</span>
+              {/* Mismo cuerpo tipográfico que "González Righi" (pedido de Lucas) */}
+              <span style={{ display: 'block', fontSize: 'min(.62em,8.4vw)', animation: 'rise 1s .15s var(--ease-out) both' }}>{site.firstName}</span>
             </span>
             <span style={{ display: 'block', paddingBottom: '.14em' }}>
               <span style={{ display: 'block', whiteSpace: 'nowrap', fontSize: 'min(.62em,8.4vw)', animation: 'fadein 1s .28s var(--ease-out) both' }}>
@@ -84,13 +114,13 @@ export function Hero() {
             ))}
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '14px', marginTop: '36px', animation: 'fadein 1s .85s both', position: 'relative' }}>
-            {/* CTA principal: descarga del CV */}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '36px', animation: 'fadein 1s .85s both', position: 'relative' }}>
+            {/* CTA único, centrado en la columna: invita a scrollear el trabajo
+                (flecha ↓ = misma página). El CV sigue disponible en Contacto. */}
             <a
               data-magnetic="1"
               data-sweep="1"
-              href={asset(site.cv.href)}
-              download={site.cv.download}
+              href="#proyectos"
               data-hover="box-shadow:0 22px 60px -16px rgba(33,224,127,.45)"
               style={{
                 position: 'relative',
@@ -98,7 +128,7 @@ export function Hero() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '10px',
-                padding: '16px 32px',
+                padding: '12px 30px',
                 borderRadius: 'var(--radius-pill)',
                 fontSize: '15px',
                 fontWeight: 600,
@@ -110,39 +140,9 @@ export function Hero() {
             >
               <span aria-hidden style={{ position: 'absolute', inset: 0, background: 'var(--green-400)', pointerEvents: 'none', clipPath: 'inset(0 100% 0 0)', transition: 'clip-path 3s cubic-bezier(.4,.05,.25,1)' }} />
               <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 4v11M6.5 10.5L12 16l5.5-5.5M4.5 20h15" />
-                </svg>
-                {dict.hero.cv}
-              </span>
-            </a>
-            {/* CTA secundario */}
-            <a
-              data-magnetic="1"
-              data-sweep-border="1"
-              href="#proyectos"
-              data-hover="color:#fff;box-shadow:0 0 40px -12px rgba(33,224,127,.35)"
-              style={{
-                position: 'relative',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '10px',
-                padding: '16px 30px',
-                borderRadius: 'var(--radius-pill)',
-                fontSize: '15px',
-                fontWeight: 500,
-                color: 'var(--text-body)',
-                border: '1px solid var(--blue-400)',
-                background: 'rgba(16,42,67,.35)',
-                backdropFilter: 'blur(10px)',
-                transition: 'box-shadow .35s,color .3s,transform .18s',
-              }}
-            >
-              <span aria-hidden style={{ position: 'absolute', inset: '-1px', borderRadius: 'var(--radius-pill)', border: '1px solid var(--green-400)', background: 'rgba(150,160,172,.22)', pointerEvents: 'none', clipPath: 'inset(0 100% 0 0)', transition: 'clip-path 1.5s cubic-bezier(.4,.05,.25,1)' }} />
-              <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
                 {dict.hero.viewProjects}
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M5 12h13M13 6l6 6-6 6" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 5v13M6.5 12.5L12 18l5.5-5.5" />
                 </svg>
               </span>
             </a>
@@ -206,5 +206,6 @@ export function Hero() {
         </span>
       </div>
     </section>
+    </div>
   );
 }

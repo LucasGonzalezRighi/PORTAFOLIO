@@ -1,3 +1,4 @@
+import { asset } from '@/lib/asset';
 /**
  * ============================================================================
  * EFFECTS ENGINE — Sistema de animación e interacción del portfolio
@@ -43,6 +44,9 @@ export class EffectsEngine {
   private restores: Cleanup[] = [];
   private mouse: { x: number; y: number } | null = null;
   private pRaf = 0;
+  /** Cierres de abanicos por card (para poder cerrarlos desde el scroll) */
+  private fanClosers = new WeakMap<HTMLElement, () => void>();
+  private fanCloseBound = false;
   private timers: ReturnType<typeof setTimeout>[] = [];
   private intervals: ReturnType<typeof setInterval>[] = [];
 
@@ -108,6 +112,7 @@ export class EffectsEngine {
     this.step(() => this.sweeps());
     this.step(() => this.pointer());
     this.step(() => this.parallax());
+    this.step(() => this.scrollFx());
     this.step(() => this.particles());
     this.step(() => this.zoomSection());
     this.step(() => this.sheenWave());
@@ -330,6 +335,17 @@ export class EffectsEngine {
     this.onScrollAny(check);
     this.every(check, 400);
     this.later(check, 300);
+    // Failsafe: si por cualquier motivo la animación no corrió (p. ej. un
+    // observer perdido), a los 4s se escribe el valor final: nunca quedan "0".
+    this.later(() => {
+      document.querySelectorAll<HTMLElement>('[data-count]').forEach((el) => {
+        const key = (el.closest('section') || document.body) as HTMLElement;
+        if (key.dataset.cRan) return;
+        const target = +(el.dataset.count || 0);
+        const dec = +(el.dataset.decimals || 0);
+        el.textContent = dec ? target.toFixed(dec).replace('.', ',') : String(Math.round(target)).padStart(2, '0');
+      });
+    }, 4000);
     this.cleanups.push(() => io.disconnect());
   }
 
@@ -440,50 +456,17 @@ export class EffectsEngine {
 
   // ── filtro y layout de experiencia ─────────────────────────
   private expFilter() {
-    const cards = [...document.querySelectorAll<HTMLElement>('[data-exp-card]')];
-    const grid = document.querySelector<HTMLElement>('[data-exp-grid]');
-    const line = document.querySelector<HTMLElement>('[data-exp-line]');
+    // El filtro lo aplica el escenario (data-expstack): acá solo el estado.
+    const stage = document.querySelector<HTMLElement>('[data-expstack]');
     const btns = [...document.querySelectorAll<HTMLElement>('[data-exp-btn]')];
-    if (!cards.length || !grid) return;
-    const mq = window.matchMedia('(min-width: 900px)');
-    const layout = () => {
-      const two = mq.matches;
-      grid.style.gridTemplateColumns = two ? '1fr 1fr' : '1fr';
-      if (line) line.style.display = two ? 'block' : 'none';
-      cards.forEach((c) => {
-        c.style.gridColumn = two ? (c.dataset.exp === 'dev' ? '1' : '2') : 'auto';
-        c.style.gridRow = two && c.dataset.expRow ? c.dataset.expRow : 'auto';
-        const node = c.querySelector<HTMLElement>('[data-node]');
-        if (!node) return;
-        if (!two) {
-          node.style.display = 'none';
-          return;
-        }
-        node.style.display = '';
-        if (c.dataset.exp === 'dev') {
-          node.style.left = 'auto';
-          node.style.right = 'calc(-1 * clamp(24px,3vw,44px) - 8px)';
-        } else {
-          node.style.right = 'auto';
-          node.style.left = 'calc(-1 * clamp(24px,3vw,44px) - 8px)';
-        }
-      });
-    };
-    layout();
-    mq.addEventListener('change', layout);
-    this.cleanups.push(() => mq.removeEventListener('change', layout));
+    if (!stage || !btns.length) return;
     const apply = (f: string) => {
-      cards.forEach((c) => {
-        const flip = c.querySelector<HTMLElement>('[data-flip]');
-        if (flip && flip.dataset.open === '1') {
+      stage.dataset.expFilter = f;
+      stage.querySelectorAll<HTMLElement>('[data-flip]').forEach((flip) => {
+        if (flip.dataset.open === '1') {
           flip.dataset.open = '0';
           flip.style.transform = 'rotateY(0deg)';
         }
-        const on = f === 'all' || c.dataset.exp === f;
-        c.style.transition = 'opacity .45s, filter .45s';
-        c.style.opacity = on ? '' : '.35';
-        c.style.filter = on ? '' : 'grayscale(1) brightness(.85)';
-        c.style.pointerEvents = on ? '' : 'none';
       });
       btns.forEach((b) => {
         const act = b.dataset.expBtn === f;
@@ -819,6 +802,21 @@ export class EffectsEngine {
 
   // ── abanico de proyectos ───────────────────────────────────
   private fans() {
+    // Cierre de seguridad: si al scrollear la card salió de abajo del cursor
+    // sin disparar pointerleave, el abanico quedaba "pegado" abierto y las
+    // hojas pisaban a las cards vecinas. En cada scroll se cierra todo lo
+    // que ya no está realmente hovereado.
+    if (!this.fanCloseBound) {
+      this.fanCloseBound = true;
+      this.onScrollAny(() => {
+        document.querySelectorAll<HTMLElement>('[data-fan][data-fan-open]').forEach((card) => {
+          if (!card.matches(':hover')) {
+            const close = this.fanClosers.get(card);
+            if (close) close();
+          }
+        });
+      });
+    }
     document.querySelectorAll<HTMLElement>('[data-fan]').forEach((card) => {
       if (card.dataset.fanBound) return;
       card.dataset.fanBound = '1';
@@ -826,21 +824,25 @@ export class EffectsEngine {
       const s2 = card.querySelector<HTMLElement>('[data-sheet="2"]');
       if (!s1 || !s2) return;
       const enter = () => {
+        card.setAttribute('data-fan-open', '1');
         card.style.zIndex = '5';
         s1.style.opacity = '1';
         s2.style.opacity = '1';
-        s1.style.transform = 'rotate(-1.6deg) translate(-14px,0) scale(.985)';
-        s2.style.transform = 'rotate(1.6deg) translate(14px,0) scale(.985)';
+        s1.style.transform = 'rotate(-2deg) translate(-28px,16px) scale(.985)';
+        s2.style.transform = 'rotate(2deg) translate(28px,16px) scale(.985)';
       };
       const leave = () => {
+        card.removeAttribute('data-fan-open');
         card.style.zIndex = '';
         s1.style.opacity = '0';
         s2.style.opacity = '0';
         s1.style.transform = 'rotate(0deg) translate(0,0) scale(1)';
         s2.style.transform = 'rotate(0deg) translate(0,0) scale(1)';
       };
+      this.fanClosers.set(card, leave);
       this.on(card, 'pointerenter', enter);
       this.on(card, 'pointerleave', leave);
+      this.on(card, 'pointercancel', leave);
       this.on(card, 'focus', enter);
       this.on(card, 'blur', leave);
     });
@@ -1007,6 +1009,601 @@ export class EffectsEngine {
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
+    this.cleanups.push(() => cancelAnimationFrame(raf));
+  }
+
+  // ── efectos ligados al scroll (estilo damrod.dev) ─────────────
+  // Todos los valores se SUAVIZAN con interpolación amortiguada (lerp por
+  // frame, tipo GSAP ScrollSmoother): nada salta, todo llega con inercia.
+  // data-bandx="0.45"        → translateX horizontal ligado al scroll
+  // data-splitx="left|right" → panel que entra desde su lado
+  // data-secfx="rise|zoom"   → transición de sección completa (suave)
+  // data-pinsplit            → contacto pineado (--open/--reveal/--exit)
+  // data-herotilt            → hero que se vuelve tarjeta, se inclina y se va (estilos inline)
+  // data-depthcard           → card que entra desde el fondo (Stack)
+  // data-exitfx              → sección que sale con desenfoque + fundido
+  // data-footrow/footword    → contenido del footer que entra con el scroll
+  // data-expstack            → Experiencia: mazo de cards apilado (sticky)
+  // data-cardexit            → salida "carta de póker" (Sobre mí): gira ~90° a la derecha y se va abajo a la izquierda
+  // data-overlayin           → sección que sube y se apoya encima de la anterior (Stack)
+  // data-arctext             → texto sobre arco SVG
+  private scrollFx() {
+    const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+    const easeInOut = (p: number) => (p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2);
+    const SMOOTH = 0.12; // factor de amortiguación por frame
+    const cur = new WeakMap<Element, Record<string, number>>();
+    const sm = (el: Element, key: string, target: number, k = SMOOTH) => {
+      let m = cur.get(el);
+      if (!m) {
+        m = {};
+        cur.set(el, m);
+      }
+      const prev = m[key];
+      const next = prev === undefined ? target : prev + (target - prev) * k;
+      m[key] = Math.abs(next - target) < 0.0004 ? target : next;
+      return m[key];
+    };
+    let raf = 0;
+    let lastT = performance.now();
+    const frame = () => {
+      raf = requestAnimationFrame(frame);
+      const vh = window.innerHeight;
+      const vw = window.innerWidth;
+      // dt para que el suavizado del hero sea igual en 60 Hz y en 144 Hz
+      const now = performance.now();
+      const dt = Math.min(64, now - lastT);
+      lastT = now;
+      document.querySelectorAll<HTMLElement>('[data-secfx]').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.bottom < -200 || r.top > vh + 200) return;
+        const mode = el.dataset.secfx;
+        // ── Salida "carta de póker" (data-cardexit, solo desktop ≥900px, sin pin) ──
+        // Mientras el final de la sección sube (85 % de la pantalla → arriba):
+        //   x 0.00–0.45  la sección se recorta a proporción de carta (clip-path
+        //                con esquinas redondeadas) y aparece la "cara": marco
+        //                lima fino + índices "01 / LGR" en dos esquinas
+        //   x 0.20–1.00  gira en sentido antihorario (~90°, con leve
+        //                inclinación 3D), se achica y viaja a la esquina
+        //                inferior derecha
+        //   x 0.60–1.00  se desvanece
+        // Todo pegado al scroll, ease-in-out senoidal, suavizado dt.
+        if (el.dataset.cardexit && vw >= 900) {
+          // posición SIN transform (getBoundingClientRect incluye el
+          // transform propio → sería un lazo que hace saltar la animación)
+          let absTop = 0;
+          for (let n: HTMLElement | null = el; n; n = n.offsetParent as HTMLElement | null) absTop += n.offsetTop;
+          const rTop = absTop - window.scrollY;
+          const r = { top: rTop, bottom: rTop + el.offsetHeight };
+          const sine = (v: number) => -(Math.cos(Math.PI * clamp01(v)) - 1) / 2;
+          const k = 1 - Math.exp(-dt / 55);
+          const ein = sine((vh - r.top) / (vh * 0.6));
+          const x = sm(el, 'cx', clamp01((vh * 0.85 - r.bottom) / (vh * 0.85)), k);
+          const tyIn = sm(el, 'ty', (1 - ein) * 44, k);
+          const c = sine(x / 0.45); // formación de la carta
+          const t = sine((x - 0.2) / 0.8); // giro + viaje
+          const f = sine((x - 0.6) / 0.4); // desvanecido
+          const W = el.offsetWidth;
+          const H = el.offsetHeight;
+          // carta: alto ≤ 86 % de la pantalla, proporción de naipe (5:7)
+          const cardH = Math.min(H, vh * 0.86);
+          const cardW = Math.min(W, cardH * 0.72);
+          const inX = ((W - cardW) / 2) * c;
+          const inY = ((H - cardH) / 2) * c;
+          const rad = 34 * c;
+          // mantiene la carta centrada en pantalla mientras se forma (si no,
+          // la sección ya se fue por arriba cuando gira)
+          const hold = (vh * 0.5 - (r.top + H / 2)) * c;
+          // queda DEBAJO de Stack (que sube y la tapa como otra carta)
+          el.style.zIndex = '';
+          el.style.clipPath = c > 0.001 ? `inset(${inY.toFixed(1)}px ${inX.toFixed(1)}px round ${rad.toFixed(1)}px)` : '';
+          // el contenido se achica para entrar en la carta (no queda cortado)
+          const content = el.querySelector<HTMLElement>(':scope > [data-cardcontent]');
+          if (content) {
+            const fit = Math.min(
+              1,
+              (cardW - 110) / Math.max(1, content.offsetWidth),
+              (cardH - 150) / Math.max(1, content.offsetHeight),
+            );
+            const cs = 1 - (1 - fit) * c;
+            content.style.transformOrigin = '50% 50%';
+            content.style.transform = cs < 0.999 ? `scale(${cs.toFixed(4)})` : '';
+          }
+          el.style.transformOrigin = '50% 50%';
+          el.style.transform =
+            `perspective(2000px) translate3d(${(0.34 * vw * t).toFixed(1)}px,${(tyIn + hold + 0.34 * vh * t).toFixed(1)}px,0) ` +
+            `rotateX(${(t * 12).toFixed(2)}deg) rotateZ(${(-t * 90).toFixed(2)}deg) scale(${(1 - t * 0.68).toFixed(4)})`;
+          el.style.opacity = (Math.min(1, 0.5 + 0.5 * ein) * (1 - f)).toFixed(3);
+          // se aleja y se oscurece mientras Stack la tapa
+          el.style.filter = c > 0.002 ? `brightness(${(1 - c * 0.2 - t * 0.35).toFixed(3)})` : '';
+          // Cara de la carta (se crea una vez): marco + índices en esquinas
+          let face = el.querySelector<HTMLElement>(':scope > [data-cardface]');
+          if (!face) {
+            face = document.createElement('div');
+            face.setAttribute('data-cardface', '1');
+            face.setAttribute('aria-hidden', 'true');
+            face.className = 'card-face';
+            face.innerHTML =
+              '<div class="card-face-frame"></div>' +
+              `<img class="card-face-logo card-face-logo--tl" src="${asset('/images/logo-lgr.png')}" alt="">` +
+              `<img class="card-face-logo card-face-logo--br" src="${asset('/images/logo-lgr.png')}" alt="">`;
+            el.appendChild(face);
+          }
+          face.style.left = `${inX.toFixed(1)}px`;
+          face.style.right = `${inX.toFixed(1)}px`;
+          face.style.top = `${inY.toFixed(1)}px`;
+          face.style.bottom = `${inY.toFixed(1)}px`;
+          face.style.borderRadius = `${rad.toFixed(1)}px`;
+          face.style.opacity = c.toFixed(3);
+          return;
+        }
+        if (el.dataset.cardexit) {
+          // en mobile vuelve al comportamiento normal: limpiar lo de desktop
+          const face = el.querySelector<HTMLElement>(':scope > [data-cardface]');
+          if (face) face.style.opacity = '0';
+          if (el.style.clipPath) el.style.clipPath = '';
+          if (el.style.zIndex) el.style.zIndex = '';
+          const content = el.querySelector<HTMLElement>(':scope > [data-cardcontent]');
+          if (content && content.style.transform) content.style.transform = '';
+        }
+        // entrada: recorrido largo → transición suave, nunca brusca
+        const ein = easeInOut(clamp01((vh - r.top) / (vh * 0.6)));
+        // salida: recién atenúa cuando el FINAL de la sección sube; opacidad
+        // y brillo bajan de a poco (efecto opaco progresivo)
+        const pout = clamp01((vh * 0.8 - r.bottom) / (vh * 0.6));
+        let ty = 0;
+        let sc = 1;
+        if (mode === 'rise') ty = (1 - ein) * 44;
+        if (mode === 'zoom') {
+          sc = 0.97 + ein * 0.03;
+          ty = (1 - ein) * 26;
+        }
+        sc *= 1 - pout * 0.04;
+        const tyS = sm(el, 'ty', ty);
+        const scS = sm(el, 'sc', sc);
+        const opS = sm(el, 'op', Math.min(1, 0.5 + 0.5 * ein) * (1 - pout * 0.3));
+        const brS = sm(el, 'br', 1 - pout * 0.35);
+        if (!el.style.transformOrigin) el.style.transformOrigin = '50% 30%';
+        el.style.transform = `translate3d(0,${tyS.toFixed(2)}px,0) scale(${scS.toFixed(4)})`;
+        el.style.opacity = opS.toFixed(3);
+        el.style.filter = brS < 0.995 ? `brightness(${brS.toFixed(3)})` : '';
+      });
+      document.querySelectorAll<HTMLElement>('[data-herotilt]').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.bottom < -200) return;
+        // Hero → tarjeta inclinada (estilo damrod). El hero queda sticky
+        // dentro del escenario (el ::after suma el recorrido del pin) y el
+        // progreso de ese pin maneja todo, pegado al scroll.
+        // Las etapas se SOLAPAN para que sea un solo movimiento continuo
+        // (sin frenadas entre etapas), cada una con ease-in-out senoidal:
+        //   p 0.00–0.40  se vuelve tarjeta (achica al 80%, bordes)   hc
+        //   p 0.08–0.70  se inclina hacia adentro (rotateX)           ht
+        //   p 0.50–1.00  se hunde hacia el fondo y se apaga           hx
+        // Recién cuando termina el pin entra "Sobre mí".
+        // Rendimiento: los estilos se escriben directo en cada elemento (no
+        // como variables CSS en el padre, que obligaban a recalcular los
+        // estilos de todo el hero en cada frame → sensación trabada).
+        el.setAttribute('data-herotilt-on', '1');
+        const sec = el.querySelector<HTMLElement>('.hero-section');
+        if (!sec) return;
+        const hh = sec.offsetHeight;
+        // Si el hero es más alto que la pantalla (mobile) se pinea cuando su
+        // final llega abajo, así primero se lee completo.
+        const stick = Math.min(0, vh - hh);
+        const stickPx = `${stick}px`;
+        if (sec.style.top !== stickPx) sec.style.top = stickPx;
+        const pin = Math.max(1, el.offsetHeight - hh);
+        const p = clamp01((stick - r.top) / (pin * 0.97));
+        const ease = (v: number) => -(Math.cos(Math.PI * clamp01(v)) - 1) / 2;
+        // Suavizado corto e independiente del refresco: reparte cada paso
+        // de la rueda en ~0.1 s, sin inercia (si parás, se frena).
+        const k = 1 - Math.exp(-dt / 55);
+        const hc = sm(el, 'hc', ease(p / 0.4), k);
+        const ht = sm(el, 'ht', ease((p - 0.08) / 0.62), k);
+        const hx = sm(el, 'hx', ease((p - 0.5) / 0.5), k);
+        const hp = sm(el, 'hp', p, k);
+        const mobile = vw < 900;
+        const tilt = mobile ? 24 : 30;
+        const radius = mobile ? 24 : 36;
+        sec.style.transform =
+          `translate3d(0,${(-hx * 4).toFixed(3)}vh,${(-hx * 320).toFixed(1)}px) ` +
+          `scale(${(1 - hc * 0.2).toFixed(4)}) rotateX(${(ht * tilt).toFixed(3)}deg)`;
+        sec.style.opacity = (1 - hx).toFixed(3);
+        sec.style.borderRadius = `${(hc * radius).toFixed(1)}px`;
+        sec.style.pointerEvents = hx > 0.9 ? 'none' : '';
+        const bg = sec.querySelector<HTMLElement>('.hero-card-bg');
+        if (bg) bg.style.opacity = hc.toFixed(3);
+        const txt = el.querySelector<HTMLElement>('.hero-stacktext');
+        if (txt) {
+          txt.style.opacity = (hc * (1 - hx)).toFixed(3);
+          txt.querySelectorAll<HTMLElement>('.hero-stacktext-row').forEach((row, i) => {
+            const dir = i % 2 ? -1 : 1;
+            row.style.transform = `translate3d(calc(-25% + ${(dir * hp * 0.18 * vw).toFixed(1)}px),0,0)`;
+          });
+        }
+      });
+      // ── Stack: cards "desde el fondo" (sin pin, pegado al scroll) ──
+      // Cada card arranca lejos (translateZ −520px), chica, apagada y
+      // desenfocada, y se acerca con ease-in-out mientras sube por la
+      // pantalla. Escalonado por columna: las de la derecha llegan un poco
+      // después, así la fila entra como una ola.
+      const depthCards = [...document.querySelectorAll<HTMLElement>('[data-depthcard]')];
+      if (depthCards.length) {
+        const tops = depthCards.map((c) => Math.round(c.offsetTop));
+        const kd = 1 - Math.exp(-dt / 55);
+        depthCards.forEach((card, i) => {
+          const r = card.getBoundingClientRect();
+          if (r.top > vh + 200 || r.bottom < -200) return;
+          // columna = cuántas cards anteriores comparten su misma fila
+          let col = 0;
+          for (let j = 0; j < i; j++) if (tops[j] === tops[i]) col++;
+          const raw = clamp01((vh * 1.02 - r.top) / (vh * 0.5) - col * 0.14);
+          const e = sm(card, 'd', -(Math.cos(Math.PI * raw) - 1) / 2, kd);
+          const inv = 1 - e;
+          if (e >= 0.999) {
+            card.style.transform = '';
+            card.style.opacity = '';
+            card.style.filter = '';
+            return;
+          }
+          card.style.transform = `translate3d(0,${(inv * 70).toFixed(1)}px,${(-inv * 520).toFixed(1)}px) scale(${(0.86 + e * 0.14).toFixed(4)})`;
+          card.style.opacity = (0.05 + e * 0.95).toFixed(3);
+          card.style.filter = `blur(${(inv * 8).toFixed(2)}px) brightness(${(0.45 + e * 0.55).toFixed(3)})`;
+        });
+      }
+      // ── Salida con desenfoque y fundido (sin pin) ──
+      // Cuando el final de la sección sube por la mitad superior de la
+      // pantalla, se va desenfocando, apagando y achicando apenas.
+      // ── Entrada "carta que se apoya encima" (data-overlayin, Stack) ──
+      // Mientras la sección entra, sube un poco más rápido que el scroll
+      // (translate independiente del transform de data-exitfx), con bordes
+      // superiores redondeados y una sombra suave arriba que se asientan al
+      // apoyarse. Sutil, pegado al scroll, ease-in-out senoidal.
+      document.querySelectorAll<HTMLElement>('[data-overlayin]').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.top > vh + 200 || r.bottom < -200) return;
+        const sine = (v: number) => -(Math.cos(Math.PI * clamp01(v)) - 1) / 2;
+        const k = 1 - Math.exp(-dt / 55);
+        const e = sm(el, 'ov', sine((vh - r.top) / (vh * 0.9)), k);
+        const inv = 1 - e;
+        el.style.zIndex = '2';
+        el.style.translate = inv > 0.001 ? `0 ${(inv * 90).toFixed(1)}px` : '';
+        el.style.borderTopLeftRadius = el.style.borderTopRightRadius = `${(8 + inv * 28).toFixed(1)}px`;
+        el.style.boxShadow = inv > 0.001
+          ? `0 -${(18 + inv * 22).toFixed(0)}px ${(50 + inv * 30).toFixed(0)}px -20px rgba(0,0,0,${(0.35 + inv * 0.35).toFixed(3)}), 0 -1px 0 rgba(78,159,212,${(0.08 + inv * 0.14).toFixed(3)})`
+          : '0 -18px 50px -20px rgba(0,0,0,.35), 0 -1px 0 rgba(78,159,212,.08)';
+      });
+      document.querySelectorAll<HTMLElement>('[data-exitfx]').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.top > vh || r.bottom < -100) return;
+        const raw = clamp01((vh * 0.62 - r.bottom) / (vh * 0.62));
+        const x = sm(el, 'x', -(Math.cos(Math.PI * raw) - 1) / 2, 1 - Math.exp(-dt / 55));
+        if (x <= 0.001) {
+          el.style.filter = '';
+          el.style.opacity = '';
+          el.style.transform = '';
+          return;
+        }
+        el.style.filter = `blur(${(x * 10).toFixed(2)}px)`;
+        el.style.opacity = (1 - x * 0.9).toFixed(3);
+        el.style.transform = `scale(${(1 - x * 0.05).toFixed(4)})`;
+      });
+      document.querySelectorAll<HTMLElement>('[data-pinsplit]').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.top > vh + 300 || r.bottom < -300) return;
+        // Contacto: TODO el efecto va "scrubbeado" al scroll (la duración la
+        // define cuánto scrolleás, no un reloj) y cada tramo usa ease-in-out.
+        // El footer sube por encima de Contacto: el pin incluye su alto
+        // (--footer-h) y esa parte final no cuenta para abrir/revelar.
+        const footer = document.querySelector<HTMLElement>('.site-footer');
+        const fh = footer ? footer.offsetHeight : 0;
+        const sticky = el.querySelector<HTMLElement>('.contact-sticky');
+        // En mobile el panel puede ser más alto que la pantalla: se pinea
+        // cuando su final llega abajo, así primero se lee completo.
+        if (sticky) {
+          const st = `${Math.min(0, vh - sticky.offsetHeight)}px`;
+          if (sticky.style.top !== st) sticky.style.top = st;
+        }
+        const total = r.height - vh - fh;
+        // Entrada: mientras la sección sube desde abajo hasta quedar pineada
+        const enter = clamp01((vh - r.top) / vh);
+        let open: number;
+        let rev: number;
+        if (total > vh * 0.5) {
+          // Modo pineado (desktop): el progreso DENTRO del wrapper maneja la
+          // secuencia, como el pin de damrod:
+          //   p 0.00–0.10  palabra cerrada · 0.10–0.52 abre · 0.40–0.72 revela
+          const p = clamp01(-r.top / total);
+          open = clamp01((p - 0.1) / 0.42);
+          rev = clamp01((p - 0.4) / 0.32);
+        } else {
+          // Fallback sin pin (mobile): abre a medida que entra en pantalla
+          const p = clamp01((vh * 0.78 - r.top) / (vh * 0.52));
+          open = p;
+          rev = clamp01((p - 0.35) / 0.5);
+        }
+        // Suavizado independiente del refresco (igual que el hero): reparte
+        // cada paso de la rueda en ~0.1 s, sin inercia.
+        const kc = 1 - Math.exp(-dt / 55);
+        const sine = (v: number) => -(Math.cos(Math.PI * clamp01(v)) - 1) / 2;
+        const enterS = sm(el, 'enter', sine(enter), kc);
+        const openS = sm(el, 'open', sine(open), kc);
+        const revS = sm(el, 'rev', sine(rev), kc);
+        // Salida: el footer sube por encima de Contacto (quieto). c = cuánto
+        // lo tapó (lineal con el scroll); ex = c con ease-in-out.
+        const fTop = footer ? footer.getBoundingClientRect().top : r.bottom;
+        const c = clamp01((vh - fTop) / Math.max(1, Math.min(fh, vh)));
+        const exS = sm(el, 'ex', sine(c), kc);
+        // Setear variables solo si cambiaron: cada escritura obliga a
+        // recalcular estilos de toda la sección (más fluido así).
+        const setVar = (k: string, v: number) => {
+          const str = v.toFixed(4);
+          if (el.style.getPropertyValue(k) !== str) el.style.setProperty(k, str);
+        };
+        setVar('--enter', enterS);
+        setVar('--open', openS);
+        setVar('--reveal', revS);
+        setVar('--exit', exS);
+        // El footer NUNCA tapa el nombre: si su borde superior va a llegar al
+        // nombre, el panel sube lo justo para que el nombre quede siempre
+        // arriba del footer (lo "empuja"), con el mismo ease-in-out.
+        if (sticky) {
+          const name = sticky.querySelector<HTMLElement>('.contact-name');
+          let lift = 0;
+          if (name && fh) {
+            const sr = sticky.getBoundingClientRect();
+            // posición natural del nombre con el panel pineado: su distancia
+            // al borde del panel (no cambia con el lift) + el top del sticky
+            const rel = name.getBoundingClientRect().bottom - sr.top;
+            const natural = Math.min(0, vh - sticky.offsetHeight) + rel;
+            const gap = 28;
+            const needEnd = Math.max(0, natural + gap - (vh - Math.min(fh, vh)));
+            const needNow = Math.max(0, natural + gap - fTop);
+            lift = Math.max(needNow, needEnd * exS);
+          }
+          const liftS = sm(sticky, 'lift', lift, kc);
+          if (exS > 0.0005 || liftS > 0.5) {
+            sticky.style.transform = `translate3d(0,${(-liftS).toFixed(1)}px,0) scale(${(1 - exS * 0.03).toFixed(4)})`;
+            sticky.style.filter = `blur(${(exS * 4).toFixed(2)}px) brightness(${(1 - exS * 0.5).toFixed(3)})`;
+          } else if (sticky.style.transform) {
+            sticky.style.transform = '';
+            sticky.style.filter = '';
+          }
+        }
+        // El CTA del medio recién se puede clickear cuando la palabra abrió
+        if (openS > 0.6) el.removeAttribute('data-cta-off');
+        else el.setAttribute('data-cta-off', '1');
+      });
+      // ── Footer: contenido que entra pegado al scroll ──
+      // c = cuánto subió el footer (0 = recién asoma, 1 = página al final).
+      // Filas en cascada: suben 28px y pasan de borrosas a nítidas, cada una
+      // con su tramo (desfasado 0.12) y ease-in-out senoidal. La palabra
+      // gigante llega última: sube desde abajo y se enciende.
+      {
+        const foot = document.querySelector<HTMLElement>('.site-footer');
+        if (foot) {
+          const fr = foot.getBoundingClientRect();
+          if (fr.top < vh + 100) {
+            const fh = foot.offsetHeight;
+            const c = clamp01((vh - fr.top) / Math.max(1, Math.min(fh, vh)));
+            const kf = 1 - Math.exp(-dt / 55);
+            const sine = (v: number) => -(Math.cos(Math.PI * clamp01(v)) - 1) / 2;
+            foot.querySelectorAll<HTMLElement>('[data-footrow]').forEach((row) => {
+              const i = +(row.dataset.footrow || 0);
+              const e = sm(row, 'f', sine((c - 0.12 - i * 0.12) / 0.45), kf);
+              if (e >= 0.999) {
+                if (row.style.opacity) {
+                  row.style.opacity = '';
+                  row.style.transform = '';
+                  row.style.filter = '';
+                }
+                return;
+              }
+              const inv = 1 - e;
+              row.style.opacity = e.toFixed(3);
+              row.style.transform = `translate3d(0,${(inv * 28).toFixed(1)}px,0)`;
+              row.style.filter = `blur(${(inv * 6).toFixed(2)}px)`;
+            });
+            const word = foot.querySelector<HTMLElement>('[data-footword]');
+            if (word) {
+              const e = sm(word, 'f', sine((c - 0.5) / 0.5), kf);
+              word.style.transform = `translate3d(0,${((1 - e) * 55).toFixed(2)}%,0)`;
+              word.style.opacity = e.toFixed(3);
+            }
+          }
+        }
+      }
+      // ── Experiencia: cards + carpeta (sticky, pegado al scroll) ──
+      // Solo cuentan las cards que pasan el filtro (data-exp-filter en el
+      // escenario). seg (sobre m cards activas) recorre:
+      //   0 → m−1     entran las cards; la anterior se archiva en su pestaña
+      //   m−1 → m     se archiva la última
+      //   m → m+1     la carpeta (cerrada, con las m pestañas) viaja al centro
+      //   m+1 → m+2.8 queda quieta al centro para elegir una pestaña
+      // Después el sticky se suelta y la sección sigue normal.
+      document.querySelectorAll<HTMLElement>('[data-expstack]').forEach((el) => {
+        // activo desde el inicio: así el alto de la página no cambia al llegar
+        if (!el.hasAttribute('data-expstack-on')) el.setAttribute('data-expstack-on', '1');
+        const r = el.getBoundingClientRect();
+        if (r.top > vh + 200 || r.bottom < -200) return;
+        const all = [...el.querySelectorAll<HTMLElement>('[data-expitem]')];
+        if (!all.length) return;
+        const filter = el.dataset.expFilter || 'all';
+        const onF = (it: HTMLElement) => filter === 'all' || it.dataset.track === filter;
+        const items = all.filter(onF);
+        const m = Math.max(1, items.length);
+        const ke = 1 - Math.exp(-dt / 55);
+        const sine = (v: number) => -(Math.cos(Math.PI * clamp01(v)) - 1) / 2;
+        const total = Math.max(1, el.offsetHeight - vh);
+        const SEG_END = m + 2.8;
+        const pRaw = clamp01(-r.top / total);
+        // si cambia el filtro, el progreso salta sin animar (evita "rebobinados")
+        if (el.dataset.expFilterPrev !== filter) {
+          el.dataset.expFilterPrev = filter;
+          const mm = cur.get(el);
+          if (mm) delete mm.seg;
+        }
+        const seg = sm(el, 'seg', pRaw * SEG_END, ke);
+        // ¿ya está fijo? (la línea se enciende recién ahí)
+        const lit = sine(1 - r.top / (vh * 0.3));
+        // Cards fuera del filtro: ocultas y sin pestaña
+        all.forEach((it) => {
+          if (onF(it)) return;
+          it.style.opacity = '0';
+          it.style.pointerEvents = 'none';
+          it.style.transform = `translate3d(0,${vh}px,0)`;
+        });
+        const enter = items.map((_, i) => (i === 0 ? 1 : sine(seg - (i - 1))));
+        const deck = all[0].parentElement;
+        if (deck) {
+          const h = Math.max(...items.map((it) => it.offsetHeight), 0);
+          const hs = `${h}px`;
+          if (deck.style.height !== hs) deck.style.height = hs;
+        }
+        const drop = Math.min(vh * 0.8, 720);
+        const folder = el.querySelector<HTMLElement>('[data-expfolder]');
+        // pestañas: solo las del filtro, reacomodadas una al lado de la otra
+        const tabs = folder ? [...folder.querySelectorAll<HTMLElement>('[data-exptab]')] : [];
+        tabs.forEach((tab) => {
+          const it = all[+(tab.dataset.exptab || 0)];
+          const k = items.indexOf(it);
+          if (k < 0) {
+            tab.style.display = 'none';
+            return;
+          }
+          tab.style.display = '';
+          tab.style.setProperty('--k', String(k));
+          tab.style.setProperty('--tabs', String(m));
+          tab.dataset.slot = String(k);
+        });
+        const stored = items.map((_, i) => sine(seg - i));
+        const dr = deck ? deck.getBoundingClientRect() : null;
+        const dw = deck ? Math.max(1, deck.offsetWidth) : 1;
+        items.forEach((it, i) => {
+          const e = enter[i];
+          const st = stored[i];
+          let tx = 0;
+          let ty = (1 - e) * drop;
+          let sc = 1;
+          let op = 1;
+          const tab = folder?.querySelector<HTMLElement>(`[data-exptab="${all.indexOf(it)}"]`);
+          if (st > 0.0005 && tab && dr) {
+            const tr = tab.getBoundingClientRect();
+            const tgx = tr.left + tr.width / 2 - (dr.left + dr.width / 2);
+            const tgy = tr.top + tr.height / 2 - dr.top;
+            const tsc = tr.width / dw;
+            tx = tgx * st;
+            ty = ty + tgy * st;
+            sc = 1 + (tsc - 1) * st;
+            op = 1 - sine((st - 0.35) / 0.55);
+          }
+          if (tab) {
+            const t = sine((st - 0.55) / 0.45);
+            tab.style.opacity = t.toFixed(3);
+            tab.style.transform = `translate3d(0,${((1 - t) * 14).toFixed(1)}px,0)`;
+            tab.style.pointerEvents = t > 0.8 ? '' : 'none';
+          }
+          it.style.transform = `translate3d(${tx.toFixed(1)}px,${ty.toFixed(1)}px,0) scale(${sc.toFixed(4)})`;
+          it.style.filter = '';
+          it.style.opacity = op < 0.999 ? op.toFixed(3) : '';
+          it.style.zIndex = String(100 + i);
+          it.style.pointerEvents = e > 0.6 && st < 0.1 ? '' : 'none';
+        });
+        // Cierre: la carpeta vuelve al centro (cerrada) y queda para elegir
+        const fc = sine(seg - m);
+        if (folder) {
+          const sticky = folder.offsetParent as HTMLElement | null;
+          if (sticky) {
+            const cx = sticky.clientWidth / 2 - (folder.offsetLeft + folder.offsetWidth / 2);
+            const cy = sticky.clientHeight * 0.55 - (folder.offsetTop + folder.offsetHeight / 2);
+            folder.style.translate = `${(cx * fc).toFixed(1)}px ${(cy * fc).toFixed(1)}px`;
+            folder.style.scale = (1 + fc * 0.45).toFixed(4);
+          }
+          folder.toggleAttribute('data-centered', fc > 0.9);
+          const count = Math.round(stored.reduce((acc, v) => acc + v, 0));
+          const cEl = folder.querySelector<HTMLElement>('[data-expfolder-count]');
+          const cs = String(count).padStart(2, '0');
+          if (cEl && cEl.textContent !== cs) cEl.textContent = cs;
+          folder.style.opacity = sine(Math.min(1, seg * 2)).toFixed(3);
+        }
+        const chipEl = el.querySelector<HTMLElement>('.exp-stack-chip');
+        if (chipEl) chipEl.style.opacity = (1 - fc).toFixed(3);
+        // Línea: nace en el chip; apagada hasta que el bloque queda fijo
+        const lineWrap = el.querySelector<HTMLElement>('.exp-stack-line');
+        if (lineWrap) {
+          if (chipEl) {
+            const lt = `${Math.round(chipEl.offsetTop + chipEl.offsetHeight / 2)}px`;
+            if (lineWrap.style.top !== lt) lineWrap.style.top = lt;
+          }
+          lineWrap.style.opacity = (1 - fc * 0.85).toFixed(3);
+        }
+        const line = el.querySelector<HTMLElement>('[data-expline]');
+        if (line) {
+          const t = sine(seg / m);
+          const mix = (a2: number, b2: number) => Math.round(a2 + (b2 - a2) * t);
+          const col = `rgb(${mix(107, 44)},${mix(245, 127)},${mix(168, 196)})`;
+          line.style.background = `linear-gradient(180deg, ${col}, rgba(${mix(107, 44)},${mix(245, 127)},${mix(168, 196)},.15))`;
+          line.style.boxShadow = lit > 0.05 ? `0 0 ${(14 * lit).toFixed(1)}px ${col}` : 'none';
+          line.style.opacity = (0.12 + 0.88 * lit).toFixed(3);
+          line.style.filter = lit < 0.999 ? `saturate(${lit.toFixed(3)})` : '';
+          line.style.transform = `scaleY(${(0.15 + 0.85 * t).toFixed(4)})`;
+        }
+        // Chip: período y número de la card de arriba (entre las del filtro)
+        const top = Math.min(m - 1, Math.max(0, Math.round(seg)));
+        const per = el.querySelector<HTMLElement>('[data-expchip-period]');
+        const cnt = el.querySelector<HTMLElement>('[data-expchip-count]');
+        const txt = items[top]?.dataset.period || '';
+        if (per && per.textContent !== txt) per.textContent = txt;
+        const c = `${String(top + 1).padStart(2, '0')} / ${String(m).padStart(2, '0')}`;
+        if (cnt && cnt.textContent !== c) cnt.textContent = c;
+        // Tocar una pestaña: scroll suave hasta donde esa card está al centro
+        if (!el.dataset.expClickInit) {
+          el.dataset.expClickInit = '1';
+          const onClick = (ev: Event) => {
+            const tab = (ev.target as HTMLElement).closest<HTMLElement>('[data-exptab]');
+            if (!tab) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            const slot = +(tab.dataset.slot || 0);
+            const mm = Math.max(1, +(getComputedStyle(tab).getPropertyValue('--tabs') || 1));
+            const tot = Math.max(1, el.offsetHeight - window.innerHeight);
+            const pp = slot / (mm + 2.8);
+            const y = window.scrollY + el.getBoundingClientRect().top + pp * tot + 2;
+            window.scrollTo({ top: y, behavior: 'smooth' });
+          };
+          el.addEventListener('click', onClick, true);
+          this.cleanups.push(() => el.removeEventListener('click', onClick, true));
+        }
+      });
+      document.querySelectorAll<HTMLElement>('[data-bandx]').forEach((el) => {
+        const host = el.parentElement || el;
+        const r = host.getBoundingClientRect();
+        if (r.bottom < -400 || r.top > vh + 400) return;
+        const speed = parseFloat(el.dataset.bandx || '0.45');
+        const p = (vh - r.top) / (vh + r.height);
+        const x = sm(el, 'x', (0.5 - p) * speed * vw);
+        el.style.transform = `translate3d(${x.toFixed(1)}px,0,0)`;
+      });
+      document.querySelectorAll<HTMLElement>('[data-splitx]').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.top > vh + 200) return;
+        const dir = el.dataset.splitx === 'right' ? 1 : -1;
+        const e = 1 - Math.pow(1 - clamp01((vh - r.top) / (vh * 0.58)), 3);
+        const off = sm(el, 'off', (1 - e) * dir * Math.min(420, vw * 0.32));
+        el.style.transform = `translate3d(${off.toFixed(1)}px,0,0)`;
+        el.style.opacity = sm(el, 'op', 0.12 + 0.88 * e).toFixed(3);
+      });
+      document.querySelectorAll<SVGElement>('[data-arctext]').forEach((tp) => {
+        const svg = tp.closest('svg');
+        const host = svg?.parentElement;
+        if (!host) return;
+        const r = host.getBoundingClientRect();
+        if (r.bottom < -300 || r.top > vh + 300) return;
+        const p = (vh - r.top) / (vh + r.height);
+        const off = sm(tp, 'o', -46 + p * 64);
+        tp.setAttribute('startOffset', `${off.toFixed(2)}%`);
+      });
+    };
+    raf = requestAnimationFrame(frame);
     this.cleanups.push(() => cancelAnimationFrame(raf));
   }
 

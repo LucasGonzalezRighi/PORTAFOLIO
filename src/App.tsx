@@ -18,7 +18,7 @@ export default function App() {
 
   return (
     <LanguageProvider>
-      <div style={{ position: 'relative', width: '100%', overflow: 'hidden', background: 'var(--bg-0)' }}>
+      <div style={{ position: 'relative', width: '100%', overflow: 'clip', background: 'var(--bg-0)' }}>
       <Background />
       <CursorFx />
       <Navbar />

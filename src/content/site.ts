@@ -20,6 +20,9 @@ export const site = {
   ],
   age: { label: 'edad', value: '27' },
   photo: { src: '/images/foto-lucas.jpg', alt: 'Lucas González Righi' },
+  /** URL de webhook para el formulario de contacto (n8n/Make/etc.).
+   *  Vacío → el formulario abre el mail del visitante prellenado. */
+  formEndpoint: '',
   cv: { href: '/cv/Lucas-Gonzalez-Righi-CV.pdf', download: 'Lucas-Gonzalez-Righi-CV.pdf' },
   email: 'lucasgonzalezrighi@gmail.com',
   phone: { display: '+54 9 11 2237-0949', tel: '+5491122370949' },

@@ -5,16 +5,6 @@ import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { asset } from '@/lib/asset';
 
-/** Punto verde de disponibilidad (con pulso) */
-function StatusDot({ size = 7 }: { size?: number }) {
-  return (
-    <span style={{ position: 'relative', display: 'grid', placeItems: 'center', width: `${size}px`, height: `${size}px` }}>
-      <span style={{ position: 'absolute', width: `${size}px`, height: `${size}px`, borderRadius: '50%', background: 'var(--green-400)', animation: 'pulse 3.2s ease-in-out infinite' }} />
-      <span style={{ width: `${size - 2}px`, height: `${size - 2}px`, borderRadius: '50%', background: 'var(--green-400)' }} />
-    </span>
-  );
-}
-
 function Logo() {
   return (
     <a href="#top" style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#fff' }}>
@@ -27,38 +17,6 @@ function Logo() {
         style={{ display: 'block', filter: 'drop-shadow(0 0 14px rgba(78,159,212,.35))' }}
       />
     </a>
-  );
-}
-
-/** Pastilla "Disponible para trabajar" */
-function AvailabilityPill({ compact = false }: { compact?: boolean }) {
-  const { dict } = useLang();
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '8px',
-        padding: compact ? '5px 10px' : '6px 12px',
-        borderRadius: 'var(--radius-pill)',
-        border: 'var(--border-green)',
-        background: 'rgba(33,224,127,.05)',
-      }}
-    >
-      <StatusDot />
-      <span
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: compact ? '9px' : 'var(--text-micro)',
-          letterSpacing: compact ? '.08em' : 'var(--tracking-mono)',
-          textTransform: 'uppercase',
-          color: 'var(--lime-400)',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {dict.nav.availability}
-      </span>
-    </span>
   );
 }
 
@@ -94,9 +52,9 @@ function DesktopNav() {
       }}
     >
       <Logo />
-      <AvailabilityPill />
       <nav style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'clamp(10px,1.6vw,26px)' }}>
-        {dict.nav.links.map((link) => (
+        {/* "Proyectos" no va en el navbar (sigue en el footer y en el CTA "Mi laburo") */}
+        {dict.nav.links.filter((l) => l.id !== 'proyectos').map((link) => (
           <a key={link.id} data-navlink={link.id} href={`#${link.id}`} className="nav-link">
             {link.label}
           </a>
@@ -171,7 +129,6 @@ function MobileNav() {
       >
         <Logo />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <AvailabilityPill compact />
           {/* Hamburguesa: tres rayitas que se transforman en X */}
           <button
             type="button"
@@ -231,8 +188,9 @@ function MobileNav() {
           </div>
 
           <nav style={{ display: 'flex', flexDirection: 'column', marginTop: '28px', flex: '1 0 auto' }}>
-            {/* "Código" no se lista: esa sección no se muestra en mobile */}
-            {dict.nav.links.filter((l) => l.id !== 'codigo').map((link, i) => (
+            {/* "Código" no se lista: esa sección no se muestra en mobile.
+                "Proyectos" tampoco va en el navbar (sigue en el footer). */}
+            {dict.nav.links.filter((l) => l.id !== 'codigo' && l.id !== 'proyectos').map((link, i) => (
               <a
                 key={link.id}
                 href={`#${link.id}`}

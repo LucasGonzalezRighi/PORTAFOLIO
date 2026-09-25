@@ -1,8 +1,19 @@
-import { experiences, timelineYears, type Experience as Job } from '@/content/experience';
+import { experiences, type Experience as Job } from '@/content/experience';
 import { SectionHeading } from '@/components/ui/SectionHeading';
 import { useLang } from '@/i18n/LanguageContext';
 import type { JobTexts } from '@/i18n/types';
-import { revealStyle, monoLabel } from '@/lib/styles';
+import { monoLabel } from '@/lib/styles';
+
+/** "Oct 2023 — Mar 2025" → { full: "2023–25", short: "23–25" } ("Hoy" = año actual) */
+function periodYears(period: string) {
+  const now = new Date().getFullYear();
+  const found = period.match(/\d{4}/g)?.map(Number) ?? [];
+  const open = /hoy|today|hoje|present/i.test(period);
+  const a = found[0] ?? now;
+  const b = open ? now : (found[1] ?? a);
+  if (a === b) return { full: String(a), short: `'${String(a).slice(2)}` };
+  return { full: `${a}–${String(b).slice(2)}`, short: `${String(a).slice(2)}–${String(b).slice(2)}` };
+}
 
 function JobCard({ job, texts, currentLabel, seeMoreLabel }: { job: Job; texts: JobTexts; currentLabel: string; seeMoreLabel: string }) {
   const accent = job.current ? 'green' : 'blue';
@@ -13,8 +24,8 @@ function JobCard({ job, texts, currentLabel, seeMoreLabel }: { job: Job; texts: 
   const nodeGlow = job.current ? 'rgba(33,224,127,.5)' : 'rgba(78,159,212,.5)';
 
   return (
-    <div data-parallax="1" data-speed="0.03" data-exp-card="1" data-exp={job.track} data-exp-row={job.row} style={{ position: 'relative' }}>
-      <div data-reveal="1" data-delay={job.revealDelay || undefined} style={{ ...revealStyle, position: 'relative' }}>
+    <div data-exp-card="1" data-exp={job.track} data-exp-row={job.row} style={{ position: 'relative' }}>
+      <div style={{ position: 'relative' }}>
         <div data-tilt="1" style={{ perspective: '1500px' }}>
           <div data-flip="1" style={{ position: 'relative', transformStyle: 'preserve-3d', transition: 'transform .9s var(--ease-flip)' }}>
             {/* Frente */}
@@ -24,7 +35,8 @@ function JobCard({ job, texts, currentLabel, seeMoreLabel }: { job: Job; texts: 
                 padding: 'clamp(22px,2.4vw,32px)',
                 borderRadius: 'var(--radius-lg)',
                 border: borderFront,
-                background: job.current ? 'rgba(13,32,54,.66)' : 'rgba(13,32,54,.6)',
+                // opaco: en el mazo apilado no debe transparentarse la card de atrás
+                background: job.current ? 'rgb(12,30,50)' : 'rgb(11,27,46)',
                 backdropFilter: 'var(--blur-glass)',
                 boxShadow: job.current ? '0 30px 80px -50px rgba(33,224,127,.45)' : undefined,
                 backfaceVisibility: 'hidden',
@@ -102,8 +114,8 @@ function JobCard({ job, texts, currentLabel, seeMoreLabel }: { job: Job; texts: 
 }
 
 /**
- * Experiencia: timeline central con años, filtro dev/soporte y
- * cards con flip que muestran el detalle.
+ * Experiencia: filtro dev/soporte y timeline apilada (mazo sticky ligado al
+ * scroll) con cards que se dan vuelta para mostrar el detalle.
  */
 export function Experience() {
   const { dict } = useLang();
@@ -124,83 +136,111 @@ export function Experience() {
           <SectionHeading kicker={dict.experience.kicker} title={dict.experience.title} accent={dict.experience.accent} accentColor="var(--blue-400)" />
         </div>
 
-        {/* Filtro */}
-        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: 'clamp(36px,4.5vw,60px)' }}>
-          {filterButtons.map((btn) => {
-            const active = btn.id === 'all';
-            return (
-              <button
-                key={btn.id}
-                type="button"
-                data-magnetic="1"
-                data-sweep-auto="border"
-                data-exp-btn={btn.id}
-                aria-label={btn.label === null ? btn.aria : undefined}
-                style={{
-                  position: 'relative',
-                  cursor: 'pointer',
-                  padding: '11px 24px',
-                  borderRadius: 'var(--radius-pill)',
-                  border: active ? '1px solid var(--blue-400)' : '1px solid rgba(150,160,172,.22)',
-                  background: active ? 'rgba(16,42,67,.5)' : 'transparent',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 'var(--text-kicker)',
-                  letterSpacing: '.14em',
-                  textTransform: 'uppercase',
-                  color: active ? '#fff' : 'var(--text-dim)',
-                  transition: 'color .35s,border-color .35s,background .35s,filter .35s',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                }}
-              >
-                {btn.label ? (
-                  <span style={{ position: 'relative', zIndex: 1 }}>{btn.label}</span>
-                ) : (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        {/* Timeline con carpeta: el bloque queda fijo (sticky) y, a medida
+            que scrolleás, cada card sube al centro y la anterior se traslada
+            a la carpeta del borde (se puede tocar para volver a ella).
+            La línea central pasa de verde lima a azul de marca con el
+            progreso. Lo maneja EffectsEngine.scrollFx (data-expstack). Sin
+            motor (reduced-motion) las cards quedan en lista, una debajo de otra. */}
+        <div className="exp-stack" data-expstack="1" style={{ ['--exp-n' as never]: experiences.length }}>
+          <div className="exp-stack-sticky">
+            {/* Filtros dentro del bloque fijo: no se pierden mientras se agrupan */}
+            {/* Filtro */}
+            <div className="exp-filters" style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '12px', position: 'relative', zIndex: 120 }}>
+              {filterButtons.map((btn) => {
+                const active = btn.id === 'all';
+                return (
+                  <button
+                    key={btn.id}
+                    type="button"
+                    data-magnetic="1"
+                    data-sweep-auto="border"
+                    data-exp-btn={btn.id}
+                    aria-label={btn.label === null ? btn.aria : undefined}
+                    style={{
+                      position: 'relative',
+                      cursor: 'pointer',
+                      padding: '11px 24px',
+                      borderRadius: 'var(--radius-pill)',
+                      border: active ? '1px solid var(--blue-400)' : '1px solid rgba(150,160,172,.22)',
+                      background: active ? 'rgba(16,42,67,.5)' : 'transparent',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 'var(--text-kicker)',
+                      letterSpacing: '.14em',
+                      textTransform: 'uppercase',
+                      color: active ? '#fff' : 'var(--text-dim)',
+                      transition: 'color .35s,border-color .35s,background .35s,filter .35s',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    {btn.label ? (
+                      <span style={{ position: 'relative', zIndex: 1 }}>{btn.label}</span>
+                    ) : (
+                      /* Ícono de embudo (filtro): tres rayitas se leían como menú hamburguesa */
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 5h18l-7 8.5V19l-4 2v-7.5L3 5z" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-        {/* Timeline */}
-        <div data-exp-grid="1" style={{ position: 'relative', display: 'grid', gridTemplateColumns: '1fr', gap: 'clamp(20px,2.4vw,32px) clamp(48px,6vw,88px)', alignItems: 'start' }}>
-          <div data-exp-line="1" style={{ display: 'none', position: 'absolute', left: '50%', top: '6px', bottom: '6px', width: '1px', marginLeft: '-.5px', background: 'rgba(78,159,212,.12)' }}>
-            <div data-rail="1" style={{ position: 'absolute', inset: 0, background: 'var(--gradient-rail)', transform: 'scaleY(0)', transformOrigin: 'top', boxShadow: '0 0 12px rgba(78,159,212,.4)' }} />
-            {timelineYears.map((year, i) => (
-              <span
-                key={year}
-                style={{
-                  position: 'absolute',
-                  top: `${(i / (timelineYears.length - 1)) * 100}%`,
-                  left: '50%',
-                  transform: 'translate(-50%,-50%)',
-                  padding: '3px 10px',
-                  borderRadius: 'var(--radius-pill)',
-                  border: '1px solid rgba(78,159,212,.16)',
-                  background: 'var(--bg-0)',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 'var(--text-micro)',
-                  letterSpacing: '.14em',
-                  color: 'var(--text-dim)',
-                }}
-              >
-                {year}
+            <div className="exp-stack-line" aria-hidden>
+              <div className="exp-stack-line-fill" data-expline="1" />
+            </div>
+            <div className="exp-stack-chip" aria-hidden>
+              <span data-expchip-period="1">{dict.experience.jobs[experiences[0].company]?.period}</span>
+              <span className="exp-stack-chip-count" data-expchip-count="1">
+                01 / {String(experiences.length).padStart(2, '0')}
               </span>
-            ))}
+            </div>
+            {/* Carpeta dibujada: acá se van guardando las cards que pasaron.
+                Fondo con pestaña (detrás) y solapa (delante) → las cards
+                guardadas quedan entre las dos, asomando. */}
+            <div className="exp-folder" data-expfolder="1">
+              <div className="exp-folder-back">
+                {/* Etiqueta en la pestaña azul de la carpeta */}
+                <span className="exp-folder-label">{dict.experience.folderLabel}</span>
+              </div>
+              {/* Pestañas archivadas (tipo bibliorato): una por card que pasó,
+                  solo con sus años; asoman por arriba de la solapa */}
+              <div className="exp-folder-tabs">
+                {experiences.map((job, i) => {
+                  const y = periodYears(dict.experience.jobs[job.company]?.period ?? job.period);
+                  return (
+                    <button
+                      key={job.company}
+                      type="button"
+                      className="exp-folder-tab"
+                      data-exptab={i}
+                      aria-label={`${job.company} · ${y.full}`}
+                      style={{ ['--k' as never]: i }}
+                    >
+                      <span className="exp-tab-full">{y.full}</span>
+                      <span className="exp-tab-short">{y.short}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="exp-folder-front" aria-hidden>
+                <span className="exp-folder-count" data-expfolder-count="1">00</span>
+              </div>
+            </div>
+            <div className="exp-deck" data-exp-grid="1">
+              {experiences.map((job, i) => (
+                <div key={job.company} className="exp-deck-item" data-expitem={i} data-track={job.track} data-period={dict.experience.jobs[job.company]?.period ?? job.period}>
+                  <JobCard
+                    job={job}
+                    texts={dict.experience.jobs[job.company]}
+                    currentLabel={dict.experience.current}
+                    seeMoreLabel={dict.experience.seeMore}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-
-          {experiences.map((job) => (
-            <JobCard
-              key={job.company}
-              job={job}
-              texts={dict.experience.jobs[job.company]}
-              currentLabel={dict.experience.current}
-              seeMoreLabel={dict.experience.seeMore}
-            />
-          ))}
         </div>
       </div>
     </section>

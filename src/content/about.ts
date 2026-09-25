@@ -14,7 +14,7 @@ export const about = {
   languages: [
     { label: 'Español', level: 'nativo', color: '#E8C547', borderRgba: 'rgba(232,197,71,.24)', glowRgba: 'rgba(232,197,71,.55)', hoverBorder: '#E8C547' },
     { label: 'Português', level: 'nativo', color: 'var(--green-400)', borderRgba: 'rgba(107,245,168,.2)', glowRgba: 'rgba(107,245,168,.55)', hoverBorder: 'var(--green-400)' },
-    { label: 'English', level: 'intermedio', color: 'var(--blue-400)', borderRgba: 'rgba(78,159,212,.2)', glowRgba: 'rgba(78,159,212,.5)', hoverBorder: 'var(--blue-400)' },
+    { label: 'English', level: 'B1', color: 'var(--blue-400)', borderRgba: 'rgba(78,159,212,.2)', glowRgba: 'rgba(78,159,212,.5)', hoverBorder: 'var(--blue-400)' },
   ],
 } as const;
 

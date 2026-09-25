@@ -60,7 +60,9 @@
     color: var(--text-strong);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
+    /* clip (no hidden): recorta el desborde horizontal SIN crear un scroll
+       container, así position:sticky (contacto pineado) sigue funcionando */
+    overflow-x: clip;
   }
   a { color: var(--blue-400); text-decoration: none; }
   a:hover { color: var(--lime-400); }
@@ -186,11 +188,12 @@
   }
   @media (hover: hover) {
     .flip-card:hover .flip-inner {
-      transform: rotateY(180deg);
+      /* --flip: dirección por card (izq / arriba / abajo / der) */
+      transform: var(--flip, rotateY(180deg));
     }
   }
   .flip-inner.is-flipped {
-    transform: rotateY(180deg);
+    transform: var(--flip, rotateY(180deg));
   }
 
   /* Chips de idiomas centrados en mobile */
@@ -214,6 +217,296 @@
   }
 }
 
+/* ── Contacto: scrollytelling pineado (estilo damrod.dev) ──
+   El wrapper .contact-pin mide 240vh; adentro .contact-sticky (100vh)
+   queda clavado y el scroll maneja la secuencia con variables que
+   escribe el motor (data-pinsplit):
+     --open   0 = "CONTACTO" cerrado · 1 = mitades en los bordes
+     --reveal 0 = info oculta        · 1 = info visible
+     --enter  0 = sección entrando   · 1 = pineada (entrada ease-in-out)
+     --exit   0 = en pantalla        · 1 = tapado por el footer (blur suave)
+   El pin suma --footer-h: Contacto queda quieto mientras el footer
+   (.site-footer, margen negativo) sube por encima en diagonal.
+   Todo va ligado al scroll (sin transiciones por tiempo).
+   Los defaults (1,1,1,0) dejan todo visible para prefers-reduced-motion. */
+.contact-pin {
+  --enter: 1;
+  --open: 1;
+  --reveal: 1;
+  --exit: 0;
+  --open-dist: min(30vw, 430px);
+  position: relative;
+  height: calc(240vh + var(--footer-h, 0px));
+}
+.contact-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 2.6vh, 30px);
+  padding: 86px var(--gutter) 36px;
+  text-align: center;
+  /* blur/brillo/escala de salida y el "empuje" que evita que el footer
+     tape el nombre: los escribe el motor directo (data-pinsplit) */
+  transform-origin: 50% 40%;
+}
+.contact-reveal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  opacity: var(--reveal);
+  transform: translate3d(0, calc((1 - var(--reveal)) * 46px), 0);
+  will-change: transform, opacity;
+}
+.contact-giant {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  padding: clamp(14px, 2.4vh, 30px) 0;
+  /* Cerrada, la palabra vive en el centro de la pantalla; al revelarse la
+     info sube a su posición final (coreografía tipo damrod) */
+  transform: translate3d(0, calc((1 - var(--reveal)) * 17vh + (1 - var(--enter)) * 14vh), 0)
+    scale(calc(0.86 + var(--enter) * 0.14));
+  opacity: calc(0.15 + var(--enter) * 0.85);
+  will-change: transform, opacity;
+}
+/* Grilla del contenido revelado: nombre gigante + rol a la izquierda,
+   acciones y datos a la derecha (layout de la referencia, paleta propia) */
+.contact-reveal-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: clamp(24px, 4vw, 72px);
+  align-items: center;
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  text-align: left;
+}
+.contact-name {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: clamp(38px, 4.6vw, 72px);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: rgba(150, 160, 172, 0.55);
+  user-select: none;
+  overflow: hidden;
+}
+/* Nombre entra desde la izquierda y apellido desde la derecha con --reveal */
+.contact-name-first,
+.contact-name-last {
+  display: inline-block;
+  will-change: transform;
+}
+.contact-name-first {
+  transform: translate3d(calc((1 - var(--reveal, 1)) * -56px), 0, 0);
+}
+.contact-name-last {
+  transform: translate3d(calc((1 - var(--reveal, 1)) * 56px), 0, 0);
+}
+
+/* ── Formulario de contacto ──
+   Los campos entran en cascada a medida que se scrollea (--reveal). */
+.contact-form {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1.6vh, 16px);
+  width: 100%;
+  text-align: left;
+}
+.cf-item {
+  /* Cascada ligada al scroll: cada campo tiene su tramo de --reveal
+     (desfasado por --i) en vez de un transition-delay por tiempo */
+  --cf-p: clamp(0, calc((var(--reveal, 1) - var(--i, 0) * 0.1) / 0.5), 1);
+  opacity: var(--cf-p);
+  transform: translate3d(0, calc((1 - var(--cf-p)) * 22px), 0);
+}
+.cf-item:nth-child(2) { --i: 0; }
+.cf-item:nth-child(3) { --i: 1; }
+.cf-item:nth-child(4) { --i: 2; }
+.cf-item:nth-child(5) { --i: 3; }
+.cf-item:nth-child(6) { --i: 4; }
+.cf-label {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.cf-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(78, 159, 212, 0.22);
+  background: rgba(16, 42, 67, 0.35);
+  color: var(--text-strong);
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+}
+.cf-input::placeholder {
+  color: var(--text-faint);
+  font-style: italic;
+}
+.cf-input:focus {
+  outline: none;
+  border-color: var(--green-400);
+  box-shadow: 0 0 0 3px rgba(33, 224, 127, 0.12);
+}
+/* Con contenido, el campo se tiñe apenas */
+.cf-input[data-filled] {
+  border-color: rgba(78, 159, 212, 0.45);
+  background: rgba(16, 42, 67, 0.55);
+}
+.cf-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 42px;
+  cursor: pointer;
+}
+.cf-select:invalid,
+.cf-select option[value=''] {
+  color: var(--text-faint);
+}
+.cf-select option {
+  background: var(--bg-1, #0b1b2e);
+  color: var(--text-strong);
+}
+.cf-error {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: #ff6b6b;
+  animation: fadein 0.35s var(--ease-out) both;
+}
+.cf-status {
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  animation: fadein 0.4s var(--ease-out) both;
+}
+.cf-status--ok {
+  color: var(--green-400);
+  border: 1px solid rgba(33, 224, 127, 0.3);
+  background: rgba(33, 224, 127, 0.08);
+}
+.cf-status--fail {
+  color: #ff6b6b;
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  background: rgba(255, 107, 107, 0.07);
+}
+
+/* Mobile: sin pin (el bloque fluye natural y abre al entrar en pantalla) */
+@media (max-width: 899px) {
+  .contact-reveal-grid {
+    grid-template-columns: 1fr;
+  }
+  .contact-pin {
+    height: auto;
+  }
+  /* recorrido extra para que el footer suba por encima */
+  .contact-pin::after {
+    content: '';
+    display: block;
+    height: var(--footer-h, 0px);
+  }
+  .contact-sticky {
+    height: auto;
+    padding: var(--section-y) var(--gutter);
+  }
+}
+.contact-half {
+  display: flex;
+  align-items: center;
+  /* Blur de entrada solo en las mitades (no en .contact-giant, para no
+     romper el backdrop-filter del CTA) */
+  filter: blur(calc((1 - var(--enter)) * 6px));
+  will-change: transform, filter;
+}
+.contact-half-left {
+  transform: translate3d(calc(var(--open) * -1 * var(--open-dist)), 0, 0);
+}
+.contact-half-right {
+  transform: translate3d(calc(var(--open) * var(--open-dist)), 0, 0);
+}
+.contact-giant-word {
+  display: inline-block;
+  font-weight: 700;
+  font-size: clamp(48px, 10vw, 150px);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 0 70px rgba(78, 159, 212, 0.35);
+  user-select: none;
+}
+/* Mitad acentuada: gradiente azul → verde de la identidad */
+.contact-giant-word--accent {
+  background: var(--gradient-cta, linear-gradient(90deg, #4e9fd4, #21e07f));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 0 34px rgba(33, 224, 127, 0.3));
+}
+.contact-giant-reflection {
+  /* Fuera del flujo: el reflejo no ocupa alto (clave para el panel pineado) */
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: block;
+  transform: scaleY(-1);
+  opacity: 0.16;
+  filter: blur(1px);
+  mask-image: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.85) 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.85) 100%);
+  pointer-events: none;
+}
+.contact-giant-cta {
+  /* Revelado en el hueco: invisible con la palabra cerrada, aparece al abrirse */
+  position: absolute !important;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  z-index: 4;
+  opacity: calc((var(--open) - 0.55) / 0.45);
+  scale: calc(0.85 + var(--open) * 0.15);
+}
+/* Mientras la palabra está cerrada, el CTA no captura clicks */
+[data-cta-off] .contact-giant-cta {
+  pointer-events: none;
+}
+@media (max-width: 640px) {
+  .contact-giant {
+    --open-dist: 26vw;
+  }
+}
+
+/* ── Certificaciones: grilla fija para que 6 ítems nunca dejen huérfanos ── */
+.edu-chips {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) {
+  .edu-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 980px) {
+  .edu-chips {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 /* Respeto por prefers-reduced-motion: las animaciones decorativas se apagan */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -221,4 +514,407 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ── Hero → tarjeta inclinada hacia adentro (estilo damrod.dev) ──
+   El motor (data-herotilt) escribe transform/opacity/radio directo en
+   .hero-section, .hero-card-bg, .hero-stacktext y sus filas, pegado al
+   scroll y con ease-in-out. Sin motor (prefers-reduced-motion) no se
+   escribe nada: el hero queda como siempre y sin recorrido extra. */
+.hero-stage {
+  position: relative;
+  /* Perspectiva lejana: el trapecio queda proporcionado y el contenido
+     (textos, foto) casi no se deforma al inclinarse */
+  perspective: 2600px;
+  perspective-origin: 50% 35%;
+}
+/* Recorrido del pin (≈1,5× el anterior). Es un ::after y no padding:
+   sticky no puede entrar en el padding del padre. */
+.hero-stage[data-herotilt-on]::after {
+  content: '';
+  display: block;
+  height: 150vh;
+}
+.hero-stage > .hero-section {
+  z-index: 1;
+  transform-origin: 50% 100%;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+.hero-card-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--bg-1), var(--bg-0));
+  border: 1px solid color-mix(in srgb, var(--green-400) 22%, transparent);
+  box-shadow: 0 60px 140px -50px color-mix(in srgb, var(--green-400) 30%, transparent);
+  opacity: 0;
+}
+/* Texto gigante del stack detrás de la tarjeta, en el verde de la marca */
+.hero-stacktext {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  will-change: opacity;
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.hero-stacktext-row {
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-style: italic;
+  font-size: clamp(40px, 7.4vw, 124px);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: color-mix(in srgb, var(--green-400) 15%, transparent);
+  transform: translate3d(-25%, 0, 0);
+  will-change: transform;
+}
+.hero-stacktext-row:nth-child(even) {
+  color: color-mix(in srgb, var(--green-400) 9%, transparent);
+}
+@media (max-width: 899px) {
+  .hero-stage {
+    perspective: 1800px;
+  }
+}
+
+/* ── Footer que sube por encima de Contacto (estilo damrod.dev) ──
+   Margen negativo = su propio alto (--footer-h, lo publica Footer.tsx):
+   se superpone al tramo final del pin de Contacto, que queda quieto
+   detrás. Borde superior en diagonal (sigue la línea fina) y fondo
+   semitransparente con vidrio esmerilado: Contacto se ve borroso a
+   través de él. */
+.site-footer {
+  --footer-edge: clamp(16px, 2.6vw, 36px);
+  position: relative;
+  z-index: 2;
+  margin-top: calc(-1 * var(--footer-h, 0px));
+  overflow: hidden;
+  padding: clamp(64px, 8vw, 110px) var(--gutter) 0;
+  background: rgba(5, 8, 22, 0.78);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  clip-path: polygon(
+    0 calc(var(--footer-edge) + 1.92vw - 1px),
+    100% calc(var(--footer-edge) - 1.92vw - 1px),
+    100% 100%,
+    0 100%
+  );
+}
+
+/* ── Experiencia: timeline apilada (mazo sticky) ──
+   Sin motor (reduced-motion) las cards van en lista. Con el motor activo
+   ([data-expstack-on]) el escenario suma recorrido y el panel queda fijo
+   mientras las cards se apilan (EffectsEngine.scrollFx). */
+.exp-deck {
+  position: relative;
+  display: grid;
+  gap: clamp(20px, 2.4vw, 32px);
+  width: min(760px, 100%);
+  margin: 0 auto;
+}
+/* el nodo de la timeline vieja no aplica al mazo (inline display: grid) */
+.exp-deck [data-node] {
+  display: none !important;
+}
+.exp-stack-line,
+.exp-stack-chip {
+  display: none;
+}
+.exp-stack[data-expstack-on] {
+  /* ~28vh de scroll por tramo: entradas + archivar la última + carpeta
+     al centro (1 tramo) + pausa para elegir (1.8 tramos) */
+  height: calc(100vh + (var(--exp-n) + 2.8) * 28vh);
+  /* el panel fijo trae su propio padding-top: se compensa el hueco con el título */
+  margin-top: -60px;
+}
+.exp-stack[data-expstack-on] .exp-stack-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* arriba (no centrado): así, antes de fijarse, los filtros quedan
+     pegados al título como antes */
+  justify-content: flex-start;
+  padding: 88px 0 28px;
+  overflow: hidden;
+}
+.exp-stack[data-expstack-on] .exp-deck {
+  display: block;
+}
+/* Desktop: la card se angosta lo justo para no pisar la carpeta del borde */
+.exp-stack {
+  --folder-w: clamp(250px, 20vw, 300px);
+  --folder-right: clamp(16px, 3vw, 48px);
+}
+@media (min-width: 900px) {
+  .exp-stack[data-expstack-on] .exp-deck {
+    width: min(720px, calc(100% - 2 * (var(--folder-w) + var(--folder-right) + 24px)));
+  }
+}
+.exp-stack[data-expstack-on] .exp-deck-item {
+  position: absolute;
+  inset: 0 0 auto 0;
+  transform-origin: 50% 0%;
+  will-change: transform;
+}
+/* Línea central por detrás del mazo */
+.exp-stack[data-expstack-on] .exp-stack-line {
+  display: block;
+  position: absolute;
+  left: 50%;
+  top: 112px; /* nace detrás del chip */
+  bottom: 28px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: rgba(78, 159, 212, 0.1);
+}
+.exp-stack-line-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  transform-origin: 50% 0%;
+  transform: scaleY(0.15);
+  background: #6bf5a8;
+}
+/* Chip con el período y el número de la card de arriba */
+.exp-stack[data-expstack-on] .exp-stack-chip {
+  position: relative;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+  padding: 5px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(78, 159, 212, 0.2);
+  background: var(--bg-0);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.exp-stack-chip-count {
+  color: var(--text-faint);
+}
+
+/* ── Experiencia: carpeta donde se guardan las cards que pasaron ──
+   Fondo (con pestaña) detrás de las cards guardadas (z 50) y solapa
+   delante (z 80); las cards en viaje van por encima (z 100+). */
+.exp-folder {
+  display: none;
+}
+.exp-stack[data-expstack-on] .exp-folder {
+  display: block;
+  position: absolute;
+  right: var(--folder-right);
+  top: 50%;
+  /* por encima del mazo (que queda en el centro) para poder tocar las
+     pestañas; las cards en viaje (z 100+) pasan por encima */
+  z-index: 90;
+  width: var(--folder-w);
+  aspect-ratio: 16 / 10;
+  /* centrado vertical sin transform (el motor usa translate/scale) */
+  margin-top: calc(var(--folder-w) * -0.3125);
+  opacity: 0;
+}
+.exp-folder-back,
+.exp-folder-front {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 12px;
+}
+.exp-folder-back {
+  z-index: 50;
+  top: 8%;
+  bottom: 0;
+  border: 1px solid rgba(78, 159, 212, 0.35);
+  background: linear-gradient(180deg, rgba(29, 95, 168, 0.32), rgba(16, 42, 67, 0.55));
+}
+/* pestaña de la carpeta */
+.exp-folder-back::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: -9%;
+  width: 42%;
+  height: 16%;
+  border: 1px solid rgba(78, 159, 212, 0.35);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, rgba(33, 224, 127, 0.16), rgba(29, 95, 168, 0.4));
+}
+.exp-folder-front {
+  z-index: 80;
+  top: 34%;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(107, 245, 168, 0.28);
+  background: linear-gradient(180deg, rgba(16, 42, 67, 0.97), rgba(9, 21, 37, 0.99));
+  box-shadow: 0 -10px 30px -18px rgba(0, 0, 0, 0.8), 0 20px 40px -24px rgba(44, 127, 196, 0.6);
+}
+.exp-folder-label {
+  /* sobre la pestaña (::before de .exp-folder-back), mismo lugar y tamaño */
+  position: absolute;
+  z-index: 1;
+  left: 10px;
+  top: -9%;
+  width: 42%;
+  height: 16%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--green-300, #6bf5a8);
+  text-shadow: 0 0 10px rgba(33, 224, 127, 0.35);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.exp-folder-count {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--green-400);
+  line-height: 1;
+}
+/* Pestañas archivadas: asoman por arriba de la solapa, escalonadas una al
+   lado de la otra (separadores de bibliorato). --k = orden. */
+.exp-folder-tabs {
+  position: absolute;
+  z-index: 65;
+  left: 8px;
+  right: 8px;
+  top: calc(34% - 26px);
+  height: 40px;
+}
+.exp-folder-tab {
+  --tab-w: calc((100% - (var(--tabs, 6) - 1) * 3px) / var(--tabs, 6));
+  position: absolute;
+  top: 0;
+  left: calc(var(--k) * (var(--tab-w) + 3px));
+  width: var(--tab-w);
+  height: 34px;
+  padding: 5px 0 0;
+  border-radius: 7px 7px 0 0;
+  border: 1px solid rgba(107, 245, 168, 0.3);
+  border-bottom: none;
+  background: linear-gradient(180deg, rgba(20, 52, 82, 0.98), rgba(12, 30, 50, 0.98));
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  color: var(--text-body);
+  text-align: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: border-color 0.25s, color 0.25s, background 0.25s, top 0.3s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.exp-folder-tab:hover,
+.exp-folder-tab:focus-visible {
+  top: -4px; /* la señalada sube un poco, sin romper la línea */
+  border-color: var(--green-400);
+  color: #fff;
+  background: linear-gradient(180deg, rgba(29, 95, 168, 0.9), rgba(12, 30, 50, 0.98));
+}
+.exp-tab-short {
+  display: none;
+}
+@media (max-width: 899px) {
+  .exp-stack[data-expstack-on] .exp-folder {
+    top: auto;
+    bottom: 18px;
+    right: 12px;
+    width: 214px;
+    margin-top: 0;
+  }
+  .exp-folder-tab {
+    font-size: 8.5px;
+  }
+  .exp-tab-full {
+    display: none;
+  }
+  .exp-tab-short {
+    display: inline;
+  }
+  .exp-folder-front {
+    padding: 6px 8px;
+  }
+  .exp-folder-label {
+    font-size: 8.5px;
+    letter-spacing: 0.1em;
+  }
+  .exp-folder-count {
+    font-size: 15px;
+  }
+}
+
+/* Filtros dentro del bloque fijo de Experiencia */
+.exp-filters {
+  margin-bottom: 22px;
+}
+/* Sin motor (reduced-motion): el filtro oculta las cards que no coinciden */
+.exp-stack:not([data-expstack-on])[data-exp-filter='dev'] .exp-deck-item:not([data-track='dev']),
+.exp-stack:not([data-expstack-on])[data-exp-filter='sup'] .exp-deck-item:not([data-track='sup']) {
+  display: none;
+}
+/* Carpeta cerrada al centro: invita a elegir una pestaña */
+.exp-folder[data-centered] .exp-folder-front {
+  box-shadow: 0 -10px 30px -18px rgba(0, 0, 0, 0.8), 0 26px 60px -24px rgba(107, 245, 168, 0.45);
+}
+
+/* ── "Sobre mí": cara de carta de póker durante la salida (data-cardexit) ──
+   La crea el motor; se posiciona sobre el recorte (clip-path) de la sección. */
+.card-face {
+  position: absolute;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+}
+.card-face-frame {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(107, 245, 168, 0.45);
+  box-shadow: inset 0 0 0 10px rgba(5, 8, 22, 0.35), inset 0 0 0 11px rgba(78, 159, 212, 0.18),
+    inset 0 0 90px -30px rgba(33, 224, 127, 0.25);
+}
+.card-face-logo {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 12px rgba(33, 224, 127, 0.35));
+}
+.card-face-logo--tl {
+  top: 22px;
+  left: 24px;
+}
+.card-face-logo--br {
+  bottom: 22px;
+  right: 24px;
+  transform: rotate(180deg);
 }

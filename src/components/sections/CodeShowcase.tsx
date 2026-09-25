@@ -6,6 +6,10 @@ import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { highlight } from '@/lib/highlight';
 import { revealStyle } from '@/lib/styles';
 
+/** Duración del fundido al cambiar de archivo (ease-in-out) */
+const FADE_MS = 340;
+const EASE_IN_OUT = 'cubic-bezier(.65,0,.35,1)';
+
 const reducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -29,54 +33,106 @@ export function CodeShowcase() {
   /** Contenedor scrolleable del código: sigue al cursor mientras escribe */
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  /** Editor: se observa para escribir solo mientras está en pantalla */
+  const editorRef = useRef<HTMLDivElement>(null);
+  const visibleRef = useRef(false);
+  /** Estado del typing en curso (fuera de React para no re-renderizar de más) */
+  const typeState = useRef<{ code: string; timeline: number[]; shown: number; elapsed: number; last: number } | null>(null);
+
   /**
-   * Typing estrictamente monótono (nunca borra): cada carácter tiene un
-   * instante de aparición precalculado — ritmo pausado, con una pequeña
-   * variación por carácter y una pausa breve al terminar cada línea.
+   * Typing estrictamente monótono (nunca borra) con reloj PROPIO: el tiempo
+   * solo avanza mientras el editor está en pantalla. Así arranca recién
+   * cuando llegás a la sección, se pausa si te vas y sigue donde quedó.
+   * Ritmo natural: ~20 caracteres/s con leve variación, pausa corta al
+   * final de cada línea, más larga al cerrar una instrucción (; { } ,) y la
+   * más larga en líneas vacías (entre bloques).
    */
   const startTyping = useCallback((index: number) => {
     cancelAnimationFrame(typeRaf.current);
     const current = snippets[index];
     if (!current || reducedMotion()) {
+      typeState.current = null;
       setTypedLen(-1);
       return;
     }
     const code = current.code;
-    const CHARS_PER_SECOND = 30;
-    const NEWLINE_PAUSE_MS = 180;
+    const CHARS_PER_SECOND = 20;
+    const START_DELAY_MS = 450; // respiro antes de la primera letra
+    const LINE_PAUSE_MS = 240; // fin de línea
+    const STATEMENT_PAUSE_MS = 260; // extra si la línea cierra con ; { } ,
+    const BLOCK_PAUSE_MS = 620; // extra en línea vacía (entre bloques)
     const base = 1000 / CHARS_PER_SECOND;
-    // Instante (ms) en el que se revela el carácter i
     const timeline: number[] = new Array(code.length + 1);
-    timeline[0] = 0;
-    let t = 0;
+    let t = START_DELAY_MS;
+    timeline[0] = t;
     for (let i = 0; i < code.length; i++) {
-      // jitter determinístico (±35 %) para que no se sienta mecánico
-      const jitter = 0.65 + 0.7 * (((i * 7919) % 97) / 97);
-      t += base * jitter;
-      if (code[i] === '\n') t += NEWLINE_PAUSE_MS;
+      const ch = code[i];
+      // jitter determinístico (±30 %) para que no se sienta mecánico
+      const jitter = 0.7 + 0.6 * (((i * 7919) % 97) / 97);
+      // los espacios de indentación salen más rápido, como un editor real
+      t += ch === ' ' && code[i - 1] === ' ' ? base * 0.35 : base * jitter;
+      if (ch === '\n') {
+        t += LINE_PAUSE_MS;
+        const prev = code.slice(0, i).trimEnd().slice(-1);
+        if (';{},'.includes(prev) && prev) t += STATEMENT_PAUSE_MS;
+        if (code[i + 1] === '\n') t += BLOCK_PAUSE_MS;
+      }
       timeline[i + 1] = t;
     }
-    const start = performance.now() + 150;
-    let shown = 0;
+    typeState.current = { code, timeline, shown: 0, elapsed: 0, last: performance.now() };
     setTypedLen(0);
     const tick = (now: number) => {
-      const elapsed = now - start;
-      while (shown < code.length && timeline[shown + 1] <= elapsed) shown++;
-      setTypedLen(shown);
-      if (shown < code.length) typeRaf.current = requestAnimationFrame(tick);
-      else setTypedLen(-1);
+      const st = typeState.current;
+      if (!st) return;
+      const dt = Math.min(64, now - st.last);
+      st.last = now;
+      // el reloj solo corre con el editor a la vista
+      if (visibleRef.current) st.elapsed += dt;
+      let shown = st.shown;
+      while (shown < st.code.length && st.timeline[shown + 1] <= st.elapsed) shown++;
+      if (shown !== st.shown) {
+        st.shown = shown;
+        setTypedLen(shown);
+      }
+      if (shown < st.code.length) typeRaf.current = requestAnimationFrame(tick);
+      else {
+        typeState.current = null;
+        setTypedLen(-1);
+      }
     };
     typeRaf.current = requestAnimationFrame(tick);
   }, []);
 
-  // Mientras escribe, el panel scrollea solo para mantener visible la línea nueva
+  // Mientras escribe, el panel baja SUAVE para mantener visible la línea nueva
+  // (solo cuando aparece una línea, no en cada letra)
+  const lastScrollH = useRef(0);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || typedLen < 0) return;
-    el.scrollTop = el.scrollHeight - el.clientHeight;
+    if (el.scrollHeight === lastScrollH.current) return;
+    lastScrollH.current = el.scrollHeight;
+    el.scrollTo({ top: el.scrollHeight - el.clientHeight, behavior: reducedMotion() ? 'auto' : 'smooth' });
   }, [typedLen]);
 
+  // Visibilidad del editor: "a la vista" = al menos 35 % en pantalla
   useEffect(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        visibleRef.current = e.isIntersecting && e.intersectionRatio >= 0.35;
+      },
+      { threshold: [0, 0.35, 0.6, 1] },
+    );
+    io.observe(el);
+    return () => {
+      io.disconnect();
+      visibleRef.current = false;
+    };
+  }, [isMobile]);
+
+  useEffect(() => {
+    // Se prepara el primer snippet vacío: empieza a escribirse al llegar
     startTyping(0);
     return () => {
       cancelAnimationFrame(typeRaf.current);
@@ -94,11 +150,14 @@ export function CodeShowcase() {
     setFading(true);
     setCopied(false);
     clearTimeout(fadeTimer.current);
+    // Fundido de salida (ease-in-out) → editor vacío → escribe el nuevo
     fadeTimer.current = setTimeout(() => {
       setActive(index);
+      lastScrollH.current = 0;
+      if (scrollRef.current) scrollRef.current.scrollTop = 0;
       setFading(false);
       startTyping(index);
-    }, 170);
+    }, FADE_MS);
   };
 
   const copyActive = async () => {
@@ -129,7 +188,7 @@ export function CodeShowcase() {
   ).join('\n');
 
   return (
-    <section id="codigo" style={{ position: 'relative', zIndex: 'var(--z-content)' as never, padding: 'var(--section-y) var(--gutter)', background: 'rgba(5,8,22,.9)' }}>
+    <section id="codigo" data-secfx="zoom" style={{ position: 'relative', zIndex: 'var(--z-content)' as never, padding: 'var(--section-y) var(--gutter)', background: 'rgba(5,8,22,.9)' }}>
       <div data-parallax="1" data-speed="0.06" style={{ position: 'absolute', top: '12%', right: '-8%', width: '40vw', height: '40vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(78,159,212,.12),transparent 65%)', filter: 'var(--blur-glow)', pointerEvents: 'none' }} />
       <div style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto' }}>
         <div style={{ marginBottom: 'clamp(40px,5vw,64px)' }}>
@@ -193,7 +252,7 @@ export function CodeShowcase() {
           </div>
 
           {/* Editor */}
-          <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', minWidth: 0, borderRadius: 'var(--radius-xl)', border: 'var(--border-blue)', background: 'rgba(9,21,37,.94)', backdropFilter: 'var(--blur-glass)', boxShadow: 'var(--shadow-lift)', overflow: 'hidden' }}>
+          <div ref={editorRef} style={{ position: 'relative', display: 'flex', flexDirection: 'column', minWidth: 0, borderRadius: 'var(--radius-xl)', border: 'var(--border-blue)', background: 'rgba(9,21,37,.94)', backdropFilter: 'var(--blur-glass)', boxShadow: 'var(--shadow-lift)', overflow: 'hidden' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-3) var(--space-4)', borderBottom: 'var(--border-faint)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                 <span style={{ width: '9px', height: '9px', borderRadius: '50%', background: 'var(--code-key)', opacity: 0.7 }} />
@@ -217,7 +276,7 @@ export function CodeShowcase() {
             </div>
 
             <div ref={scrollRef} style={{ position: 'relative', height: 'clamp(300px,42vh,430px)', overflow: 'auto', background: 'rgba(7,15,28,.6)' }}>
-              <div style={{ display: 'flex', minHeight: '100%', opacity: fading ? 0 : 1, transform: `translateY(${fading ? '8px' : '0px'})`, transition: 'opacity var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out)' }}>
+              <div style={{ display: 'flex', minHeight: '100%', opacity: fading ? 0 : 1, transform: `translateY(${fading ? '8px' : '0px'})`, transition: `opacity ${FADE_MS}ms ${EASE_IN_OUT},transform ${FADE_MS}ms ${EASE_IN_OUT}` }}>
                 <div aria-hidden style={{ flex: 'none', padding: 'var(--space-4) 12px var(--space-4) var(--space-4)', textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 'var(--text-code)', lineHeight: 1.75, color: 'var(--text-faint)', userSelect: 'none', whiteSpace: 'pre' }}>
                   {gutter}
                 </div>
@@ -232,7 +291,7 @@ export function CodeShowcase() {
               </div>
             </div>
 
-            <div style={{ padding: 'var(--space-4)', borderTop: 'var(--border-faint)', opacity: fading ? 0 : 1, transition: 'opacity var(--dur-base) var(--ease-out)' }}>
+            <div style={{ padding: 'var(--space-4)', borderTop: 'var(--border-faint)', opacity: fading ? 0 : 1, transition: `opacity ${FADE_MS}ms ${EASE_IN_OUT}` }}>
               <h3 style={{ margin: 0, fontSize: 'var(--text-h4)', fontWeight: 600, color: 'var(--text-strong)' }}>{t.snippets[current.id]?.title ?? current.title}</h3>
               <p style={{ margin: '10px 0 0', maxWidth: 'var(--measure-body)', fontSize: 'var(--text-body-xs)', lineHeight: 'var(--leading-body)', color: 'var(--text-tertiary)', textWrap: 'pretty' }}>
                 {t.snippets[current.id]?.description ?? current.description}

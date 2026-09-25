@@ -23,6 +23,8 @@ export interface Dict {
   };
   hero: {
     badges: string[];
+    /** Saludo chico arriba del nombre ("Hola, soy") */
+    greeting: string;
     tagline: string;
     statLabels: [string, string, string];
     cv: string;
@@ -35,6 +37,8 @@ export interface Dict {
     title: string;
     accent: string;
     paragraphs: string[];
+    /** Etiqueta que da contexto a los chips de idiomas */
+    langsLabel: string;
     /** En el mismo orden que content/about.languages */
     languages: { label: string; level: string }[];
     /** En el mismo orden que content/about.services */
@@ -49,6 +53,8 @@ export interface Dict {
   };
   experience: {
     kicker: string;
+    /** Etiqueta de la carpeta donde se archivan las experiencias */
+    folderLabel: string;
     title: string;
     accent: string;
     filterAll: string;
@@ -97,8 +103,30 @@ export interface Dict {
     kicker: string;
     title: string;
     accent: string;
+    /** Palabra gigante partida en dos paneles (estilo damrod) */
+    giant: string;
     blurb: string;
     mailCta: string;
+    /** Formulario de contacto (estilo damrod, envío webhook/mailto) */
+    form: {
+      nameLabel: string;
+      namePh: string;
+      emailLabel: string;
+      emailPh: string;
+      typeLabel: string;
+      typePh: string;
+      typeOptions: string[];
+      msgLabel: string;
+      msgPh: string;
+      send: string;
+      sending: string;
+      success: string;
+      error: string;
+      reqName: string;
+      reqEmail: string;
+      badEmail: string;
+      reqMsg: string;
+    };
     emailLabel: string;
     phoneLabel: string;
     locationLabel: string;
