@@ -105,7 +105,7 @@ export function About() {
             ))}
 
             {/* Etiqueta de contexto para los chips (feedback de diseño) */}
-            <div className="about-langs" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--text-faint)', marginTop: '30px', display: 'flex' }}>
+            <div className="about-langs" data-cardstart="1" style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-micro)', letterSpacing: '.16em', textTransform: 'uppercase', color: 'var(--text-faint)', marginTop: '30px', display: 'flex' }}>
               {dict.about.langsLabel}
             </div>
             <div className="about-langs" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '12px' }}>

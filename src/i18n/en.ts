@@ -210,13 +210,20 @@ export const en: Dict = {
   },
   code: {
     kicker: '05 Code in action',
-    title: 'How I write',
-    accent: 'code',
+    title: 'Code with',
+    accent: 'architecture',
+    description:
+      "I code in layers: I split design, data, logic and view so each part does one thing and does it well. That is how this portfolio is built — open the explorer and see how.",
     explorer: 'Explorer',
     lines: 'lines',
     copy: 'Copy',
     copied: 'Copied ✓',
     snippets: {
+      'arquitectura': {
+        title: "Layered architecture of this portfolio",
+        description:
+          "How this site's code is organized: design, data, logic and view kept apart, each with a single responsibility.",
+      },
       'next-ts': {
         title: 'Profile as a typed Server Component',
         description:

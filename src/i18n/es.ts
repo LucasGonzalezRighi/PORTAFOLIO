@@ -210,13 +210,20 @@ export const es: Dict = {
   },
   code: {
     kicker: '05 Código en acción',
-    title: 'Cómo escribo el',
-    accent: 'código',
+    title: 'Código con',
+    accent: 'arquitectura',
+    description:
+      "Programo por capas: separo diseño, datos, lógica y vista para que cada parte haga una sola cosa y la haga bien. Así está armado este portfolio: abrí el explorador y mirá cómo.",
     explorer: 'Explorador',
     lines: 'líneas',
     copy: 'Copiar',
     copied: 'Copiado ✓',
     snippets: {
+      'arquitectura': {
+        title: "Arquitectura en capas de este portfolio",
+        description:
+          "Así está organizado el código de este sitio: diseño, datos, lógica y vista separados, cada uno con una sola responsabilidad.",
+      },
       'next-ts': {
         title: 'Perfil como Server Component tipado',
         description:

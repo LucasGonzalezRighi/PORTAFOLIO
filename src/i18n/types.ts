@@ -82,6 +82,8 @@ export interface Dict {
     kicker: string;
     title: string;
     accent: string;
+    /** Descripción bajo el título (cómo programo) */
+    description: string;
     explorer: string;
     lines: string;
     copy: string;

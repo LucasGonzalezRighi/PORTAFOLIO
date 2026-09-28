@@ -155,9 +155,9 @@ export function Projects() {
   const extras = projects.filter((p) => p.extra);
 
   return (
-    <section id="proyectos" data-secfx="rise" style={{ position: 'relative', padding: 'var(--section-y) var(--gutter)', background: 'rgba(5,8,22,.86)', overflow: 'hidden' }}>
+    <section id="proyectos" data-secfx="rise" data-cardexit="flip" style={{ position: 'relative', padding: 'var(--section-y) var(--gutter)', background: 'rgba(5,8,22,.86)', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '80vw', height: '40vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(29,95,168,.1),transparent 60%)', filter: 'blur(90px)', pointerEvents: 'none' }} />
-      <div style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto' }}>
+      <div data-cardcontent="1" style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: '24px', marginBottom: 'clamp(40px,5vw,64px)' }}>
           <div style={{ flex: '1 1 420px' }}>
             <SectionHeading kicker={t.kicker} title={t.title} accent={t.accent} accentColor="var(--blue-400)" />
@@ -169,7 +169,7 @@ export function Projects() {
             <ProjectCard key={project.title} project={project} t={t} />
           ))}
 
-          <div data-more-row="1" style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '20px', margin: '4px 0' }}>
+          <div data-more-row="1" data-cardstart="1" style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '20px', margin: '4px 0' }}>
             <span aria-hidden style={dividerLeft} />
             <button type="button" data-more-btn="1" data-magnetic="1" data-sweep-auto="border" data-hover="color:#fff;border-color:var(--blue-400)" style={moreButtonStyle}>
               <span style={{ position: 'relative', zIndex: 1 }}>{t.more}</span>
@@ -181,7 +181,7 @@ export function Projects() {
             <ProjectCard key={project.title} project={project} t={t} />
           ))}
 
-          <div data-less-row="1" style={{ display: 'none', gridColumn: '1 / -1', alignItems: 'center', gap: '20px', margin: '4px 0' }}>
+          <div data-less-row="1" data-cardstart="1" style={{ display: 'none', gridColumn: '1 / -1', alignItems: 'center', gap: '20px', margin: '4px 0' }}>
             <span aria-hidden style={dividerLeft} />
             <button type="button" data-less-btn="1" data-magnetic="1" data-sweep-auto="border" data-hover="color:#fff;border-color:var(--blue-400)" style={{ ...moreButtonStyle, display: 'inline-flex', alignItems: 'center', gap: '9px' }}>
               <span style={{ position: 'relative', zIndex: 1 }}>{t.less}</span>{' '}

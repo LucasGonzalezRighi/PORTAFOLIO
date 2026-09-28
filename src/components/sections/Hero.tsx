@@ -114,9 +114,9 @@ export function Hero() {
             ))}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: '36px', animation: 'fadein 1s .85s both', position: 'relative' }}>
-            {/* CTA único, centrado en la columna: invita a scrollear el trabajo
-                (flecha ↓ = misma página). El CV sigue disponible en Contacto. */}
+          <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginTop: '36px', animation: 'fadein 1s .85s both', position: 'relative' }}>
+            {/* CTA único, alineado a la izquierda con el texto: invita a scrollear
+                el trabajo (flecha ↓ = misma página). El CV sigue en Contacto. */}
             <a
               data-magnetic="1"
               data-sweep="1"

@@ -188,9 +188,9 @@ export function CodeShowcase() {
   ).join('\n');
 
   return (
-    <section id="codigo" data-secfx="zoom" style={{ position: 'relative', zIndex: 'var(--z-content)' as never, padding: 'var(--section-y) var(--gutter)', background: 'rgba(5,8,22,.9)' }}>
+    <section id="codigo" data-secfx="zoom" data-cardenter="1" style={{ position: 'relative', zIndex: 'var(--z-content)' as never, padding: 'var(--section-y) var(--gutter)', background: 'rgba(5,8,22,.9)' }}>
       <div data-parallax="1" data-speed="0.06" style={{ position: 'absolute', top: '12%', right: '-8%', width: '40vw', height: '40vw', borderRadius: '50%', background: 'radial-gradient(circle,rgba(78,159,212,.12),transparent 65%)', filter: 'var(--blur-glow)', pointerEvents: 'none' }} />
-      <div style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto' }}>
+      <div data-cardcontent="1" style={{ position: 'relative', maxWidth: 'var(--container)', margin: '0 auto' }}>
         <div style={{ marginBottom: 'clamp(40px,5vw,64px)' }}>
           <SectionHeading kicker={t.kicker} title={t.title} accent={t.accent} accentColor="var(--blue-400)" />
         </div>

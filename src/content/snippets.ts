@@ -15,6 +15,39 @@ export interface Snippet {
 
 export const snippets: Snippet[] = [
   {
+    id: 'arquitectura',
+    title: 'Arquitectura en capas de este portfolio',
+    file: 'portfolio-lucas/src',
+    language: 'Tree',
+    category: 'Este portfolio',
+    dot: '#6BF5A8',
+    description:
+      'Así está organizado el código de este sitio: diseño, datos, lógica y vista separados, cada uno con una sola responsabilidad.',
+    tags: ['Arquitectura en capas', 'Design Tokens', 'React 19', 'TypeScript'],
+    code: `// Arquitectura en capas: así está armado este portfolio
+// Regla: cada capa depende solo de las de abajo.
+
+src/
+├── components/      // 4 · Vista: solo renderiza
+│   ├── sections/    //     Hero, Stack, Experiencia, Código…
+│   ├── layout/      //     Navbar, Footer, fondo
+│   └── ui/          //     piezas reutilizables
+├── hooks/           // 3 · Lógica ↔ Vista
+│   └── useEffectsEngine.ts
+├── lib/             // 3 · Lógica pura, sin UI
+│   ├── effects.ts   //     motor de animaciones por scroll
+│   └── highlight.tsx
+├── content/         // 2 · Datos: contenido editable
+│   ├── projects.ts
+│   └── experience.ts
+├── i18n/            // 2 · Datos: textos es / en / pt
+│   └── LanguageContext.tsx
+└── design/          // 1 · Diseño: única fuente de verdad
+    └── tokens.ts    //     colores, tipos, espacios → CSS vars
+
+// Cambiar un color o un texto no toca ningún componente.`,
+  },
+  {
     id: 'next-ts',
     title: 'Perfil como Server Component tipado',
     file: 'app/perfil/page.tsx',

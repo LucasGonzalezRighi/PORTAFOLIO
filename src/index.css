@@ -918,3 +918,46 @@
   right: 24px;
   transform: rotate(180deg);
 }
+
+/* ── Dorso de carta: Proyectos se da vuelta como un naipe (data-cardexit="flip") ──
+   Lo crea el motor sobre el recorte de la sección. Pasado el canto (90°) la
+   sección está de espaldas: scaleX(-1) des-espeja el dorso. */
+.card-back {
+  position: absolute;
+  z-index: 7;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transform: scaleX(-1);
+  background:
+    radial-gradient(circle at 50% 50%, rgba(29, 95, 168, 0.35), transparent 62%),
+    repeating-linear-gradient(45deg, rgba(78, 159, 212, 0.07) 0 2px, transparent 2px 18px),
+    repeating-linear-gradient(-45deg, rgba(33, 224, 127, 0.06) 0 2px, transparent 2px 18px),
+    linear-gradient(160deg, var(--bg-1), var(--bg-0));
+}
+.card-back-pattern {
+  position: absolute;
+  inset: -30%;
+  background-size: 72px 72px;
+  background-repeat: repeat;
+  opacity: 0.07;
+  transform: rotate(-20deg);
+}
+.card-back-frame {
+  position: absolute;
+  inset: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(107, 245, 168, 0.45);
+  box-shadow: inset 0 0 0 7px rgba(5, 8, 22, 0.45), inset 0 0 0 8px rgba(78, 159, 212, 0.22),
+    inset 0 0 80px -30px rgba(33, 224, 127, 0.3);
+}
+.card-back-logo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 128px;
+  height: 128px;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 0 26px rgba(33, 224, 127, 0.45));
+}

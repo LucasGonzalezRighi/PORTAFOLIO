@@ -1024,7 +1024,8 @@ export class EffectsEngine {
   // data-exitfx              → sección que sale con desenfoque + fundido
   // data-footrow/footword    → contenido del footer que entra con el scroll
   // data-expstack            → Experiencia: mazo de cards apilado (sticky)
-  // data-cardexit            → salida "carta de póker" (Sobre mí): gira ~90° a la derecha y se va abajo a la izquierda
+  // data-cardexit            → salida "carta" (Sobre mí: póker que gira · Proyectos="flip": naipe que se da vuelta)
+  // data-cardenter           → entrada "carta que se endereza" (Código)
   // data-overlayin           → sección que sube y se apoya encima de la anterior (Stack)
   // data-arctext             → texto sobre arco SVG
   private scrollFx() {
@@ -1043,6 +1044,73 @@ export class EffectsEngine {
       m[key] = Math.abs(next - target) < 0.0004 ? target : next;
       return m[key];
     };
+    // ── Utilidades de "carta" (Sobre mí, Proyectos, Código) ──
+    /** top de layout (sin los transforms propios) relativo al viewport */
+    const layoutTop = (el: HTMLElement) => {
+      let t = 0;
+      for (let n: HTMLElement | null = el; n; n = n.offsetParent as HTMLElement | null) t += n.offsetTop;
+      return t - window.scrollY;
+    };
+    type CardGeo = { inX: number; inY: number; rad: number };
+    /** Recorta la sección a proporción de naipe (c: 0 = sección, 1 = carta)
+     *  y achica su contenido para que entre entero en la carta. */
+    const cardShape = (el: HTMLElement, c: number, vhNow: number): CardGeo => {
+      const W = el.offsetWidth;
+      const H = el.offsetHeight;
+      const cardH = Math.min(H, vhNow * 0.86);
+      const cardW = Math.min(W, cardH * 0.72);
+      const inX = ((W - cardW) / 2) * c;
+      const inY = ((H - cardH) / 2) * c;
+      const rad = 34 * c;
+      el.style.clipPath = c > 0.001 ? `inset(${inY.toFixed(1)}px ${inX.toFixed(1)}px round ${rad.toFixed(1)}px)` : '';
+      const content = el.querySelector<HTMLElement>(':scope > [data-cardcontent]');
+      if (content) {
+        const fit = Math.min(
+          1,
+          (cardW - 110) / Math.max(1, content.offsetWidth),
+          (cardH - 150) / Math.max(1, content.offsetHeight),
+        );
+        const cs = 1 - (1 - fit) * c;
+        content.style.transformOrigin = '50% 50%';
+        content.style.transform = cs < 0.999 ? `scale(${cs.toFixed(4)})` : '';
+      }
+      return { inX, inY, rad };
+    };
+    /** Capa de la carta (se crea una vez): 'face' = marco + logo en dos
+     *  esquinas · 'back' = dorso con el patrón de la marca */
+    const cardLayer = (el: HTMLElement, kind: 'face' | 'back') => {
+      const attr = kind === 'face' ? 'data-cardface' : 'data-cardback';
+      let layer = el.querySelector<HTMLElement>(`:scope > [${attr}]`);
+      if (!layer) {
+        const logo = asset('/images/logo-lgr.png');
+        layer = document.createElement('div');
+        layer.setAttribute(attr, '1');
+        layer.setAttribute('aria-hidden', 'true');
+        if (kind === 'face') {
+          layer.className = 'card-face';
+          layer.innerHTML =
+            '<div class="card-face-frame"></div>' +
+            `<img class="card-face-logo card-face-logo--tl" src="${logo}" alt="">` +
+            `<img class="card-face-logo card-face-logo--br" src="${logo}" alt="">`;
+        } else {
+          layer.className = 'card-back';
+          layer.innerHTML =
+            `<div class="card-back-pattern" style="background-image:url('${logo}')"></div>` +
+            '<div class="card-back-frame"></div>' +
+            `<img class="card-back-logo" src="${logo}" alt="">`;
+        }
+        el.appendChild(layer);
+      }
+      return layer;
+    };
+    /** Ubica una capa exactamente sobre el recorte de la carta */
+    const placeLayer = (layer: HTMLElement, g: CardGeo) => {
+      layer.style.left = `${g.inX.toFixed(1)}px`;
+      layer.style.right = `${g.inX.toFixed(1)}px`;
+      layer.style.top = `${g.inY.toFixed(1)}px`;
+      layer.style.bottom = `${g.inY.toFixed(1)}px`;
+      layer.style.borderRadius = `${g.rad.toFixed(1)}px`;
+    };
     let raf = 0;
     let lastT = performance.now();
     const frame = () => {
@@ -1057,91 +1125,100 @@ export class EffectsEngine {
         const r = el.getBoundingClientRect();
         if (r.bottom < -200 || r.top > vh + 200) return;
         const mode = el.dataset.secfx;
-        // ── Salida "carta de póker" (data-cardexit, solo desktop ≥900px, sin pin) ──
-        // Mientras el final de la sección sube (85 % de la pantalla → arriba):
-        //   x 0.00–0.45  la sección se recorta a proporción de carta (clip-path
-        //                con esquinas redondeadas) y aparece la "cara": marco
-        //                lima fino + índices "01 / LGR" en dos esquinas
-        //   x 0.20–1.00  gira en sentido antihorario (~90°, con leve
-        //                inclinación 3D), se achica y viaja a la esquina
-        //                inferior derecha
-        //   x 0.60–1.00  se desvanece
-        // Todo pegado al scroll, ease-in-out senoidal, suavizado dt.
-        if (el.dataset.cardexit && vw >= 900) {
-          // posición SIN transform (getBoundingClientRect incluye el
-          // transform propio → sería un lazo que hace saltar la animación)
-          let absTop = 0;
-          for (let n: HTMLElement | null = el; n; n = n.offsetParent as HTMLElement | null) absTop += n.offsetTop;
-          const rTop = absTop - window.scrollY;
-          const r = { top: rTop, bottom: rTop + el.offsetHeight };
+        // ── Cartas (solo desktop ≥900px, sin pin, pegado al scroll) ──
+        //  data-cardexit (Sobre mí): la sección se vuelve carta de póker
+        //    (recorte + marco lima + logo en dos esquinas), gira ~90°
+        //    antihorario, se achica y se va abajo a la derecha.
+        //  data-cardexit="flip" (Proyectos): se vuelve carta y SE DA VUELTA
+        //    como un naipe (rotateY 0→180°): pasado el canto (90°) se ve el
+        //    dorso con el patrón de la marca; viaja a la izquierda y se va.
+        //  data-cardenter (Código): entra como carta chica e inclinada desde
+        //    la derecha, crece, se endereza y se abre hasta ser la sección.
+        // Todo con ease-in-out senoidal y suavizado dt. La posición se calcula
+        // SIN transform (getBoundingClientRect incluye el transform propio →
+        // lazo que haría saltar la animación).
+        const cardMode = el.dataset.cardexit;
+        if ((cardMode || el.dataset.cardenter) && vw >= 900) {
           const sine = (v: number) => -(Math.cos(Math.PI * clamp01(v)) - 1) / 2;
           const k = 1 - Math.exp(-dt / 55);
-          const ein = sine((vh - r.top) / (vh * 0.6));
-          const x = sm(el, 'cx', clamp01((vh * 0.85 - r.bottom) / (vh * 0.85)), k);
-          const tyIn = sm(el, 'ty', (1 - ein) * 44, k);
-          const c = sine(x / 0.45); // formación de la carta
-          const t = sine((x - 0.2) / 0.8); // giro + viaje
-          const f = sine((x - 0.6) / 0.4); // desvanecido
-          const W = el.offsetWidth;
+          const lTop = layoutTop(el);
           const H = el.offsetHeight;
-          // carta: alto ≤ 86 % de la pantalla, proporción de naipe (5:7)
-          const cardH = Math.min(H, vh * 0.86);
-          const cardW = Math.min(W, cardH * 0.72);
-          const inX = ((W - cardW) / 2) * c;
-          const inY = ((H - cardH) / 2) * c;
-          const rad = 34 * c;
+          el.style.transformOrigin = '50% 50%';
+          if (el.dataset.cardenter) {
+            // s: 0 con el borde superior al 95 % de la pantalla → 1 al 10 %
+            // (el mismo tramo en que Proyectos se da vuelta y se va)
+            const s = sm(el, 'ce', clamp01((vh * 0.95 - lTop) / (vh * 0.85)), k);
+            const op = sine((s - 0.35) / 0.3);
+            const form = 1 - sine((s - 0.6) / 0.4); // carta → sección completa
+            const tilt = 1 - sine((s - 0.3) / 0.55); // inclinada → derecha
+            const g = cardShape(el, form, vh);
+            // mientras es carta se mantiene a la vista
+            const hold = (vh * 0.55 - (lTop + H / 2)) * form;
+            const still = form < 0.001 && tilt < 0.001;
+            el.style.transform = still
+              ? ''
+              : `perspective(2000px) translate3d(${(0.32 * vw * tilt).toFixed(1)}px,${hold.toFixed(1)}px,0) ` +
+                `rotateY(${(-28 * tilt).toFixed(2)}deg) rotateZ(${(12 * tilt).toFixed(2)}deg) scale(${(1 - 0.45 * tilt).toFixed(4)})`;
+            el.style.opacity = op < 0.999 ? op.toFixed(3) : '';
+            // invisible = fuera del hit-testing (no tapa clicks de otras secciones)
+            el.style.visibility = op < 0.005 ? 'hidden' : '';
+            const face = cardLayer(el, 'face');
+            placeLayer(face, g);
+            face.style.opacity = form.toFixed(3);
+            return;
+          }
+          const ein = sine((vh - lTop) / (vh * 0.6));
+          // Arranque: ni bien aparece abajo el último bloque visible marcado
+          // con data-cardstart (Proyectos: la línea divisoria de "Ver más";
+          // Sobre mí: los idiomas). Sin marca: el final de la sección al 85 %.
+          // La transformación dura lo mismo que antes (0.85 de pantalla).
+          const starts = [...el.querySelectorAll<HTMLElement>('[data-cardstart]')].filter((m) => m.offsetParent !== null);
+          const startEl = starts[starts.length - 1];
+          const from = startEl ? vh - layoutTop(startEl) : vh * 0.85 - (lTop + H);
+          const x = sm(el, 'cx', clamp01(from / (vh * 0.85)), k);
+          const tyIn = sm(el, 'ty', (1 - ein) * 44, k);
+          const flip = cardMode === 'flip';
+          const c = flip ? sine(x / 0.35) : sine(x / 0.45); // formación de la carta
+          const t = flip ? sine((x - 0.15) / 0.55) : sine((x - 0.2) / 0.8); // giro + viaje
+          const f = flip ? sine((x - 0.55) / 0.35) : sine((x - 0.6) / 0.4); // desvanecido
+          const g = cardShape(el, c, vh);
           // mantiene la carta centrada en pantalla mientras se forma (si no,
           // la sección ya se fue por arriba cuando gira)
-          const hold = (vh * 0.5 - (r.top + H / 2)) * c;
-          // queda DEBAJO de Stack (que sube y la tapa como otra carta)
+          const hold = (vh * 0.5 - (lTop + H / 2)) * c;
           el.style.zIndex = '';
-          el.style.clipPath = c > 0.001 ? `inset(${inY.toFixed(1)}px ${inX.toFixed(1)}px round ${rad.toFixed(1)}px)` : '';
-          // el contenido se achica para entrar en la carta (no queda cortado)
-          const content = el.querySelector<HTMLElement>(':scope > [data-cardcontent]');
-          if (content) {
-            const fit = Math.min(
-              1,
-              (cardW - 110) / Math.max(1, content.offsetWidth),
-              (cardH - 150) / Math.max(1, content.offsetHeight),
-            );
-            const cs = 1 - (1 - fit) * c;
-            content.style.transformOrigin = '50% 50%';
-            content.style.transform = cs < 0.999 ? `scale(${cs.toFixed(4)})` : '';
+          const face = cardLayer(el, 'face');
+          placeLayer(face, g);
+          if (flip) {
+            const ang = t * 180;
+            el.style.transform =
+              `perspective(1800px) translate3d(${(-0.32 * vw * t).toFixed(1)}px,${(tyIn + hold + 0.1 * vh * t).toFixed(1)}px,0) ` +
+              `rotateY(${(-ang).toFixed(2)}deg) rotateZ(${(-8 * t).toFixed(2)}deg) scale(${(1 - t * 0.45).toFixed(4)})`;
+            // pasado el canto (90°) se ve el dorso de la carta
+            const back = cardLayer(el, 'back');
+            placeLayer(back, g);
+            back.style.opacity = ang > 90 ? '1' : '0';
+            face.style.opacity = ang > 90 ? '0' : c.toFixed(3);
+          } else {
+            el.style.transform =
+              `perspective(2000px) translate3d(${(0.34 * vw * t).toFixed(1)}px,${(tyIn + hold + 0.34 * vh * t).toFixed(1)}px,0) ` +
+              `rotateX(${(t * 12).toFixed(2)}deg) rotateZ(${(-t * 90).toFixed(2)}deg) scale(${(1 - t * 0.68).toFixed(4)})`;
+            face.style.opacity = c.toFixed(3);
           }
-          el.style.transformOrigin = '50% 50%';
-          el.style.transform =
-            `perspective(2000px) translate3d(${(0.34 * vw * t).toFixed(1)}px,${(tyIn + hold + 0.34 * vh * t).toFixed(1)}px,0) ` +
-            `rotateX(${(t * 12).toFixed(2)}deg) rotateZ(${(-t * 90).toFixed(2)}deg) scale(${(1 - t * 0.68).toFixed(4)})`;
           el.style.opacity = (Math.min(1, 0.5 + 0.5 * ein) * (1 - f)).toFixed(3);
-          // se aleja y se oscurece mientras Stack la tapa
+          // ya desvanecida sigue a la pantalla (hold): oculta, no tapa clicks
+          el.style.visibility = f > 0.995 ? 'hidden' : '';
+          // se aleja y se oscurece
           el.style.filter = c > 0.002 ? `brightness(${(1 - c * 0.2 - t * 0.35).toFixed(3)})` : '';
-          // Cara de la carta (se crea una vez): marco + índices en esquinas
-          let face = el.querySelector<HTMLElement>(':scope > [data-cardface]');
-          if (!face) {
-            face = document.createElement('div');
-            face.setAttribute('data-cardface', '1');
-            face.setAttribute('aria-hidden', 'true');
-            face.className = 'card-face';
-            face.innerHTML =
-              '<div class="card-face-frame"></div>' +
-              `<img class="card-face-logo card-face-logo--tl" src="${asset('/images/logo-lgr.png')}" alt="">` +
-              `<img class="card-face-logo card-face-logo--br" src="${asset('/images/logo-lgr.png')}" alt="">`;
-            el.appendChild(face);
-          }
-          face.style.left = `${inX.toFixed(1)}px`;
-          face.style.right = `${inX.toFixed(1)}px`;
-          face.style.top = `${inY.toFixed(1)}px`;
-          face.style.bottom = `${inY.toFixed(1)}px`;
-          face.style.borderRadius = `${rad.toFixed(1)}px`;
-          face.style.opacity = c.toFixed(3);
           return;
         }
-        if (el.dataset.cardexit) {
+        if (cardMode || el.dataset.cardenter) {
           // en mobile vuelve al comportamiento normal: limpiar lo de desktop
-          const face = el.querySelector<HTMLElement>(':scope > [data-cardface]');
-          if (face) face.style.opacity = '0';
+          el.querySelectorAll<HTMLElement>(':scope > [data-cardface], :scope > [data-cardback]').forEach((l) => {
+            l.style.opacity = '0';
+          });
           if (el.style.clipPath) el.style.clipPath = '';
           if (el.style.zIndex) el.style.zIndex = '';
+          if (el.style.visibility) el.style.visibility = '';
           const content = el.querySelector<HTMLElement>(':scope > [data-cardcontent]');
           if (content && content.style.transform) content.style.transform = '';
         }

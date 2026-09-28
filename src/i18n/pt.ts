@@ -210,13 +210,20 @@ export const pt: Dict = {
   },
   code: {
     kicker: '05 Código em ação',
-    title: 'Como escrevo o',
-    accent: 'código',
+    title: 'Código com',
+    accent: 'arquitetura',
+    description:
+      "Programo em camadas: separo design, dados, lógica e visão para que cada parte faça uma coisa só e faça bem. É assim que este portfólio é feito: abra o explorador e veja como.",
     explorer: 'Explorador',
     lines: 'linhas',
     copy: 'Copiar',
     copied: 'Copiado ✓',
     snippets: {
+      'arquitectura': {
+        title: "Arquitetura em camadas deste portfólio",
+        description:
+          "Como o código deste site está organizado: design, dados, lógica e visão separados, cada um com uma única responsabilidade.",
+      },
       'next-ts': {
         title: 'Perfil como Server Component tipado',
         description:
